@@ -1,0 +1,11 @@
+- [x] Define the exact Super Stack falling-item roster, including bread, proteins, veg, and hazards.
+- [x] Create an approved visual asset sheet using recognisable Fatsandwich food ingredients rather than generic symbols.
+- [x] Define gameplay role, collision size, score value, and visual readability rule for every falling asset.
+- [x] Obtain approval of the falling-ingredient system.
+- [ ] Design the full deli-counter play-lane environment with rich Fatsandwich background treatment and clear centre-lane contrast.
+- [ ] Export the environment review as directly visible image attachments rather than storage links.
+- [ ] Replace live-game placeholders with approved food-real asset cut-outs after the environment is approved.
+- [ ] Inventory all code, design documents, and asset URLs used by the current game draft.
+- [ ] Assemble a GitHub-ready project copy with local image assets and no dependency/build folders.
+- [ ] Add setup instructions and asset provenance to the GitHub-ready project package.
+- [ ] Verify the archive structure and deliver the source ZIP.

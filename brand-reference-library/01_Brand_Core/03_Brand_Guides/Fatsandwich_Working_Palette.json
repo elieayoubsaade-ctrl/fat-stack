@@ -1,0 +1,54 @@
+{
+  "brand": "Fatsandwich",
+  "status": "Working digital palette extracted from supplied visual assets; confirm production spot/CMYK values before print fabrication.",
+  "palette": [
+    {
+      "name": "Brand Purple",
+      "role": "Primary logo burst, hero backgrounds, brand anchor",
+      "hex": "#7B5EA7",
+      "rgb": [123, 94, 167]
+    },
+    {
+      "name": "Brand Red",
+      "role": "Primary wordmark, comic display type, key accents",
+      "hex": "#E8191A",
+      "rgb": [232, 25, 26]
+    },
+    {
+      "name": "Outline Black",
+      "role": "Character outlines, logo outline, comic shadow",
+      "hex": "#000000",
+      "rgb": [0, 0, 0]
+    },
+    {
+      "name": "Paper White",
+      "role": "Deli paper, packaging base, negative space",
+      "hex": "#FFFFFF",
+      "rgb": [255, 255, 255]
+    },
+    {
+      "name": "Captain Tuna Mint",
+      "role": "Character-world accent",
+      "hex": "#A8E6C8",
+      "rgb": [168, 230, 200]
+    },
+    {
+      "name": "Runny Sunny Orange",
+      "role": "Warm action accent",
+      "hex": "#F26522",
+      "rgb": [242, 101, 34]
+    },
+    {
+      "name": "Chop-Chop Sky Blue",
+      "role": "Character-world accent",
+      "hex": "#4DA6E8",
+      "rgb": [77, 166, 232]
+    },
+    {
+      "name": "Impact Yellow",
+      "role": "Comic burst highlight",
+      "hex": "#F5D020",
+      "rgb": [245, 208, 32]
+    }
+  ]
+}
