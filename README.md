@@ -50,7 +50,7 @@ character holds the sandwich.
   with the biggest banked sandwich drawn as the hero, the board.
 - **Joystick + one button, start to finish** — left/right browse the carousel and spin
   initials; the button picks, starts, advances a slot, locks in, and plays again.
-- **Styles** — `client/src/styles/{tokens,scene,player,hud,screens}.css`. Fonts (Bangers,
+- **Styles** — `client/src/styles/{tokens,scene,player,hud,screens}.css`. Fonts (Luckiest Guy,
   Rubik) are self-hosted in `client/public/fonts/` so the event TV needs no internet.
 - **Tests** — `pnpm test` (vitest) covers the catch geometry, the hatch spawn clamp, the lid
   warning and the hero-sandwich record. `pnpm balance`: skill 2.0×, never-bank 56%,

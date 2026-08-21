@@ -5,8 +5,8 @@
    works with no internet.
    ═══════════════════════════════════════════════════════════════════════════ */
 @font-face {
-  font-family: "Bangers";
-  src: url("/fonts/Bangers-Regular.woff2") format("woff2");
+  font-family: "Luckiest Guy";
+  src: url("/fonts/LuckiestGuy-Regular.woff2") format("woff2");
   font-display: swap;
 }
 @font-face {
@@ -30,7 +30,7 @@
   --bulb: #ffd98a;
   --glass: rgba(42, 11, 61, 0.74);
 
-  --font-display: "Bangers", Impact, "Arial Black", sans-serif;
+  --font-display: "Luckiest Guy", Impact, "Arial Black", sans-serif;
   --font-ui: "Rubik", "Trebuchet MS", Arial, sans-serif;
 
   --outline: 4px;
