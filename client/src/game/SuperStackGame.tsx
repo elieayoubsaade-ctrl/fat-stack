@@ -853,7 +853,7 @@ export default function SuperStackGame() {
 
             {view.items.map((item) => {
               const spec = ITEMS[item.kind];
-              const proximity = Math.max(0, Math.min(1, (item.y + 10) / (ROUND.catchBottom + 10)));
+              const proximity = Math.max(0, Math.min(1, (item.y + 10) / (TOWER.trayY + 10)));
               return (
                 <div key={item.id} className="item-holder">
                   <div

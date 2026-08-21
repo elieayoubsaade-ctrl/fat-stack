@@ -217,7 +217,7 @@ function spawn(round: Round, kind: ItemKind, speedScale: number) {
   round.items.push({
     id: round.itemId,
     kind,
-    x: ROUND.spawnMargin + round.random() * (100 - ROUND.spawnMargin * 2),
+    x: ROUND.hatch.left + round.random() * (ROUND.hatch.right - ROUND.hatch.left),
     y: ROUND.spawnY,
     speed: spec.fallSpeed * speedScale * (0.92 + round.random() * 0.16),
     tilt: Math.round(round.random() * 24 - 12),
@@ -314,6 +314,17 @@ function handleMiss(round: Round, item: FallingItem) {
   round.events.push({ type: "drop" });
 }
 
+/** Where the top of the tower is right now — the catch point. */
+export function catchY(round: Round) {
+  return TOWER.trayY - round.tower.length * TOWER.layerUnits;
+}
+
+/** The band where a catch registers, following the top of the tower. */
+export function catchBand(round: Round) {
+  const y = catchY(round);
+  return { top: y - 8, bottom: y + 6 };
+}
+
 /** How wide the player's catching area is for a given item. */
 export function catchReach(kind: ItemKind) {
   return ROUND.playerHalfWidth + ITEMS[kind].size * 2.5;
@@ -365,7 +376,9 @@ export function stepRound(round: Round, dt: number) {
   for (const item of round.items) {
     item.y += item.speed * dt;
 
-    const inBand = item.y >= ROUND.catchTop && item.y <= ROUND.catchBottom;
+    // Recomputed per item: a catch grows the tower, which moves the band for the next one.
+    const band = catchBand(round);
+    const inBand = item.y >= band.top && item.y <= band.bottom;
     if (inBand && Math.abs(item.x - round.playerX) < catchReach(item.kind)) {
       handleCatch(round, item);
       continue;
@@ -401,7 +414,7 @@ export function autoDirection(round: Round): number {
   // Dodge first: anything nasty about to land on us.
   for (const item of round.items) {
     if (ITEMS[item.kind].group !== "hazard") continue;
-    const timeToBand = (ROUND.catchTop - item.y) / item.speed;
+    const timeToBand = (catchBand(round).top - item.y) / item.speed;
     if (timeToBand > 0.55 || timeToBand < -0.2) continue;
     if (Math.abs(item.x - round.playerX) < catchReach(item.kind) + 3) {
       return item.x > round.playerX ? -1 : 1;
@@ -413,7 +426,7 @@ export function autoDirection(round: Round): number {
   for (const item of round.items) {
     const spec = ITEMS[item.kind];
     if (spec.group === "hazard") continue;
-    const timeToFloor = (ROUND.catchBottom - item.y) / item.speed;
+    const timeToFloor = (catchBand(round).bottom - item.y) / item.speed;
     if (timeToFloor < 0) continue;
     const travel = Math.abs(item.x - round.playerX) / ROUND.playerSpeed;
     if (travel > timeToFloor + 0.1) continue;
