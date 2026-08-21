@@ -1,5 +1,12 @@
 # Super Stack — Full Review
 
+> **Progress — Step A (game core) is done.** Fixed: the round timer, flat scoring, missing
+> tiger-crunch lid, no difficulty curve, free drops, the fake NEXT UP panel, teleporting
+> movement, monitor-dependent speed, silent gameplay, and the "0 points = well done" results
+> screen. Balance is now measured by `pnpm balance`, not guessed. **Steps B (compose the
+> screens for a TV) and C (finish the art, cut the weight) are still open** — everything in
+> Part 1.2, 1.3, 1.4 and Part 3 below still stands.
+
 Branch: `elie-edits`
 
 Reviewed by running the game at **1920×1080** (event-TV size), walking every screen, measuring the
