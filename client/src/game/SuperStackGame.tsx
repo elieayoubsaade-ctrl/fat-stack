@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gameAssets } from "./assets";
 import Ingredient, { artFor } from "./Ingredient";
 import { isMuted, primeAudio, setMuted, setMusicIntensity, sfx, startMusic, stopMusic } from "./audio";
+import { CHARACTERS, characterById } from "./characters";
 import { COUNTDOWN_SECONDS, ITEMS, LEADERBOARD_SIZE, ROUND, TOWER, type ItemKind } from "./config";
 import {
   autoDirection,
@@ -25,7 +26,7 @@ import {
 // 1. Helpers and local types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Screen = "start" | "how-to" | "playing" | "results" | "board";
+type Screen = "start" | "select" | "how-to" | "playing" | "results" | "board";
 
 type View = {
   items: FallingItem[];
@@ -67,6 +68,7 @@ type ResultStage = "counting" | "reveal" | "initials" | "done";
 
 const SCORES_KEY = "fatsandwich-super-stack-scores";
 const BEST_KEY = "fatsandwich-super-stack-best";
+const CHAR_KEY = "fatsandwich-super-stack-char";
 
 /** The simulation always advances in steps of at most this long. */
 const PHYSICS_STEP = 1 / 120;
@@ -154,6 +156,14 @@ export default function SuperStackGame() {
   const [mamiReact, setMamiReact] = useState(0);
   const [scorePulse, setScorePulse] = useState(0);
   const [hasPlayed, setHasPlayed] = useState(false);
+  const [charId, setCharId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(CHAR_KEY) ?? CHARACTERS[0].id;
+    } catch {
+      return CHARACTERS[0].id;
+    }
+  });
+  const playerChar = characterById(charId);
 
   // Results sequencing
   const [resultStage, setResultStage] = useState<ResultStage>("done");
@@ -194,6 +204,9 @@ export default function SuperStackGame() {
   useEffect(() => {
     localStorage.setItem(BEST_KEY, String(best));
   }, [best]);
+  useEffect(() => {
+    localStorage.setItem(CHAR_KEY, charId);
+  }, [charId]);
 
   const boardCutoff = scores.length >= LEADERBOARD_SIZE ? (scores[scores.length - 1]?.score ?? 0) : 0;
   const topScore = scores[0]?.score ?? 0;
@@ -433,6 +446,18 @@ export default function SuperStackGame() {
         return;
       }
 
+      // On the character-select screen the joystick browses the cast.
+      if (current === "select" && (isLeft(event.key) || isRight(event.key))) {
+        event.preventDefault();
+        sfx.uiPress();
+        setCharId((cur) => {
+          const index = CHARACTERS.findIndex((c) => c.id === cur);
+          const next = (index + (isRight(event.key) ? 1 : -1) + CHARACTERS.length) % CHARACTERS.length;
+          return CHARACTERS[next].id;
+        });
+        return;
+      }
+
       if (isLeft(event.key)) {
         event.preventDefault();
         keysRef.current.left = true;
@@ -457,10 +482,12 @@ export default function SuperStackGame() {
         // The results screen owns Enter while its own sequence is running.
         if (current === "results" || current === "playing") return;
         event.preventDefault();
-        if (current === "start") {
+        if (current === "start" || current === "board") {
+          goTo("select");
+        } else if (current === "select") {
           if (hasPlayedRef.current) startGame(false);
           else goTo("how-to");
-        } else if (current === "how-to" || current === "board") {
+        } else if (current === "how-to") {
           startGame(false);
         }
       }
@@ -673,11 +700,8 @@ export default function SuperStackGame() {
 
       {screen === "start" && (
         <section className="screen-overlay start-screen" aria-label="Start screen">
-          <div className="host host-mami">
+          <div className="host">
             <img src={gameAssets.pastramiMami} alt="Pastrami Mami" />
-          </div>
-          <div className="host host-tuna">
-            <img src={gameAssets.captainTuna} alt="Captain Tuna" />
           </div>
           <div className="start-center">
             <img className="stack-icon" src={gameAssets.superStack} alt="Super Stack" />
@@ -687,30 +711,56 @@ export default function SuperStackGame() {
               <em>BANK</em> IT BIG.
             </h1>
             <p>Catch the good stuff. Grab the lid to bank your points. Don’t let it topple.</p>
-            <button className="red-button big-button" onClick={() => (hasPlayed ? startGame(false) : goTo("how-to"))}>
+            <button className="red-button big-button" onClick={() => goTo("select")}>
               {hasPlayed ? "PLAY AGAIN" : "PRESS TO PLAY"}
             </button>
-            {hasPlayed && (
-              <button className="text-link" onClick={() => goTo("how-to")}>
-                HOW TO PLAY
-              </button>
-            )}
             <div className="start-hint">
               <b>MOVE</b> joystick · arrows · drag <span>•</span> <b>START</b> red button · space
             </div>
-          </div>
-          <div className="start-badges">
-            <div className="stat-burst">
-              <span>TODAY’S TOP STACK</span>
-              <strong>{fmt(topScore)}</strong>
-            </div>
-            {best > 0 && (
-              <div className="stat-burst stat-burst-red">
-                <span>YOUR BEST</span>
-                <strong>{fmt(best)}</strong>
+            <div className="stat-row">
+              <div className="stat-pill">
+                <span>TODAY’S TOP STACK</span>
+                <b>{fmt(topScore)}</b>
               </div>
-            )}
+              {best > 0 && (
+                <div className="stat-pill red">
+                  <span>YOUR BEST</span>
+                  <b>{fmt(best)}</b>
+                </div>
+              )}
+            </div>
           </div>
+          <div className="host">
+            <img src={gameAssets.captainTuna} alt="Captain Tuna" />
+          </div>
+        </section>
+      )}
+
+      {screen === "select" && (
+        <section className="screen-overlay select-screen" aria-label="Choose your character">
+          <h2>CHOOSE YOUR STACKER</h2>
+          <div className="char-grid">
+            {CHARACTERS.map((c) => (
+              <button
+                key={c.id}
+                className={`char-card ${c.id === charId ? "picked" : ""}`}
+                onClick={() => {
+                  sfx.uiPress();
+                  setCharId(c.id);
+                }}
+              >
+                <img src={c.art} alt={c.name} />
+                <b>{c.name}</b>
+                <span>{c.tag}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            className="red-button big-button"
+            onClick={() => (hasPlayed ? startGame(false) : goTo("how-to"))}
+          >
+            STACK AS {playerChar.name.toUpperCase()}
+          </button>
         </section>
       )}
 
@@ -869,7 +919,7 @@ export default function SuperStackGame() {
                   />
                 ))}
               </div>
-              <img className="player-sprite" src={gameAssets.player} alt="The Fat Sandwich" />
+              <img className="player-sprite" src={playerChar.art} alt={playerChar.name} />
               {layerCount > 0 && (
                 <div className={`height-chip ${towerHeat}`}>
                   {layerCount}/{TOWER.collapseAt}
@@ -955,7 +1005,7 @@ export default function SuperStackGame() {
 
       {screen === "results" && lastRun && (
         <section className="screen-overlay results-screen" aria-label="Results screen">
-          <img className="results-mami" src={gameAssets.pastramiMami} alt="Pastrami Mami" />
+          <img className="results-char" src={playerChar.art} alt={playerChar.name} />
           <div className="result-center">
             <h2>{resultHeadline(lastRun)}</h2>
             <div className="score-receipt">
@@ -1043,6 +1093,9 @@ export default function SuperStackGame() {
             )}
 
             {resultStage === "done" && (
+              <div className="merch-note">HIGH SCORE = MERCH · SHOW STAFF YOUR SCORE</div>
+            )}
+            {resultStage === "done" && (
               <div className="result-actions">
                 {savedRank !== null && <div className="rank-badge">#{savedRank} TODAY</div>}
                 <button className="red-button big-button" onClick={() => startGame(false)}>
@@ -1059,10 +1112,6 @@ export default function SuperStackGame() {
               {slam.text}
             </div>
           )}
-          <div className="merch-burst">
-            HIGH SCORE
-            <br />= MERCH
-          </div>
         </section>
       )}
 
@@ -1082,18 +1131,10 @@ export default function SuperStackGame() {
               ))}
             </div>
             <p>{boardCutoff > 0 ? `SCORE ${fmt(boardCutoff + 1)}+ TO JOIN THE BOARD` : "ANY SCORE JOINS THE BOARD"}</p>
-            <button className="red-button big-button" onClick={() => startGame(false)}>
+            <div className="merch-note">CLAIM YOUR MERCH · SHOW STAFF YOUR SCORE</div>
+            <button className="red-button big-button" onClick={() => goTo("select")}>
               PLAY
             </button>
-          </div>
-          <div className="claim-card">
-            <img src={gameAssets.superStack} alt="Prize icon" />
-            <b>
-              CLAIM YOUR
-              <br />
-              MERCH
-            </b>
-            <span>SHOW STAFF YOUR SCORE</span>
           </div>
         </section>
       )}
@@ -1116,5 +1157,6 @@ function resultCaption(run: RunSummary) {
   if (run.potLost > run.score / 2) return `${fmt(run.potLost)} POINTS NEVER REACHED THE BANK. GRAB THE LID!`;
   if (run.fumbles === 0 && run.collapses === 0) return "CLEAN ROUND. NOTHING SPILLED, NOTHING TOPPLED.";
   if (run.collapses > 0) return `${run.collapses} TOPPLE${run.collapses > 1 ? "S" : ""}. BANK BEFORE IT FALLS.`;
+  if (run.fumbles > 0) return `${run.fumbles} FUMBLE${run.fumbles > 1 ? "S" : ""}. STILL TASTY.`;
   return "NO FUMBLES. NICE.";
 }
