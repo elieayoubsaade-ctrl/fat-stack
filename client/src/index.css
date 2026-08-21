@@ -391,3 +391,78 @@ img { -webkit-user-drag: none; }
   .claim-invite { flex-direction: column; gap: 8px; }
   .claim-copy { text-align: center; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHONES (Talal's night scene sizes everything with vh clamps, which balloon
+   in portrait where the viewport is tall and narrow. This layer re-caps the
+   HUD, player and screens by vw on small widths. Loaded after styles/*.css so
+   equal-specificity rules here win.)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+
+  /* ── HUD boards: compact corners, nothing colliding with the kiosk ─────── */
+  .board { padding: 6px 10px; min-width: 84px; border-width: 3px; }
+  .board > b { font-size: clamp(18px, 7vw, 28px); margin: 2px 0 0; }
+  .board > small { font-size: 9px; margin-top: 2px; }
+  .eyebrow { font-size: 9px; letter-spacing: 1px; }
+  .board-banked { top: 1%; left: 1.5%; }
+  .board-clock { top: 1%; right: 1.5%; }
+  .board-clock > b { font-size: clamp(26px, 9vw, 38px); }
+  .board-clock > i { font-size: 9px; padding: 2px 6px; }
+  .cups { gap: 4px; margin-top: 4px; }
+  .cup { width: 18px; height: 18px; }
+  .board-top { bottom: 1%; left: 1.5%; }
+  .board-top > b { font-size: clamp(14px, 5.5vw, 22px); }
+
+  /* The next-up sign docks below the header, clear of the corner boards. */
+  .hatch-sign {
+    top: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 70px;
+    padding: 4px 6px;
+  }
+  .hatch-sign strong { font-size: 11px; letter-spacing: 1px; }
+  .hatch-sign .next-item { width: 34px; height: 34px; margin-top: 2px; }
+  .hatch-sign span { font-size: 8px; }
+
+  .combo-meter { right: 1.5%; bottom: 1%; }
+  .combo-meter b { font-size: clamp(14px, 5.5vw, 22px); }
+
+  /* ── Player + tower: sized to the narrow lane ─────────────────────────── */
+  .player { width: clamp(96px, 30vw, 140px); }
+  .tower { width: clamp(70px, 22vw, 100px); }
+  .tower-base + .tower-layer { margin-bottom: calc(clamp(70px, 22vw, 100px) * -0.3); }
+  .tower-layer { height: clamp(10px, 3.2vw, 15px); margin-bottom: calc(clamp(10px, 3.2vw, 15px) * -0.24); }
+  .pot-chip b { font-size: clamp(14px, 4.5vw, 20px); }
+  .pot-chip span, .pot-chip i { font-size: 8px; }
+  .height-chip { font-size: clamp(11px, 3.5vw, 15px); }
+
+  /* ── Scene: shorter kiosk, quieter marquee ────────────────────────────── */
+  .marquee { font-size: 14px; letter-spacing: 2px; border-width: 3px; }
+
+  /* ── Menu screens: type set in vw, everything single-column ───────────── */
+  .screen-overlay h1 { font-size: clamp(30px, 10.5vw, 44px); }
+  .screen-overlay h2 { font-size: clamp(24px, 8.5vw, 36px); }
+  .red-button, .white-button { font-size: clamp(15px, 4.8vw, 20px); }
+  .big-button { font-size: clamp(17px, 5.5vw, 24px); padding: 12px 24px; }
+  .start-logo { height: clamp(52px, 16vw, 72px); }
+  .start-center p { font-size: 13px; }
+  .stat-pill b { font-size: clamp(14px, 5vw, 20px); }
+
+  /* Character carousel: cards sized so the row reads on a phone */
+  .char-card { min-width: 96px; }
+  .char-card img { height: clamp(56px, 18vw, 84px); }
+
+  /* Results: stack vertically, hero sandwich shrinks, receipt owns the width */
+  .results-screen { flex-direction: column; gap: 8px; }
+  .result-hero { display: none; } /* the receipt is the story on a phone */
+  .score-receipt { width: min(94vw, 420px); }
+  .claim-invite { flex-direction: column; gap: 8px; text-align: center; }
+  .claim-copy { text-align: center; }
+
+  /* Floating feedback stays legible but not huge */
+  .float-text { font-size: clamp(13px, 4.5vw, 19px); }
+  .slam { font-size: clamp(34px, 13vw, 58px); }
+  .countdown-overlay b { font-size: clamp(90px, 36vw, 150px); }
+}
