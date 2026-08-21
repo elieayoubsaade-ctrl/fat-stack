@@ -20,7 +20,7 @@
   margin: 0;
   font: 400 clamp(40px, 8vh, 96px) var(--font-display);
   letter-spacing: 3px;
-  line-height: 0.95;
+  line-height: 1.05;
   color: var(--cream);
   text-shadow: 5px 5px 0 var(--ink);
   text-align: center;
@@ -121,7 +121,7 @@
 .hazard-demo .hazard-mark { position: absolute; font: 400 clamp(40px, 7vh, 64px) var(--font-display); color: var(--red); text-shadow: 2px 2px 0 var(--ink); }
 
 /* Results */
-.results-screen { flex-direction: row; gap: clamp(24px, 5vw, 90px); }
+.results-screen { flex-direction: row; gap: clamp(24px, 4vw, 64px); }
 .result-hero { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 0 0 auto; }
 .hero-sandwich { width: clamp(160px, 22vh, 260px); display: flex; justify-content: center; }
 .hero-sandwich .tower { position: relative; left: auto; bottom: auto; transform: none; width: 100%; filter: drop-shadow(0 14px 0 rgba(0, 0, 0, 0.4)); }
@@ -139,7 +139,7 @@
   box-shadow: var(--burst-shadow);
 }
 .score-receipt > span, .score-receipt small { display: block; font: 800 clamp(10px, 1.5vh, 13px) var(--font-ui); letter-spacing: 2px; }
-.score-receipt > b { display: block; margin: 2px 0; color: var(--red); font: 400 clamp(44px, 9vh, 96px) var(--font-display); text-shadow: 4px 4px 0 var(--ink); line-height: 0.95; letter-spacing: 2px; }
+.score-receipt > b { display: block; margin: 8px 0 10px; color: var(--red); font: 400 clamp(44px, 9vh, 96px) var(--font-display); text-shadow: 4px 4px 0 var(--ink); line-height: 1.05; letter-spacing: 2px; }
 .receipt-lines { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; margin-top: 10px; padding-top: 8px; border-top: 2px dashed var(--ink); }
 .receipt-lines div { display: flex; justify-content: space-between; gap: 8px; font: 800 clamp(10px, 1.5vh, 13px) var(--font-ui); letter-spacing: 0.5px; }
 .receipt-lines b { color: var(--purple); }

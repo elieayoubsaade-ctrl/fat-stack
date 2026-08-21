@@ -13,7 +13,7 @@
   min-width: clamp(130px, 11vw, 220px);
 }
 .eyebrow { display: block; font: 800 clamp(10px, 1.5vh, 14px) var(--font-ui); letter-spacing: 2px; color: var(--cream); opacity: 0.85; }
-.board > b { display: block; font: 400 clamp(30px, 5.6vh, 60px) var(--font-display); line-height: 1; color: var(--yellow); letter-spacing: 2px; text-shadow: 3px 3px 0 var(--ink); }
+.board > b { display: block; margin: 4px 0 2px; font: 400 clamp(30px, 5.6vh, 60px) var(--font-display); line-height: 1.05; color: var(--yellow); letter-spacing: 2px; text-shadow: 3px 3px 0 var(--ink); }
 .board > small { display: block; margin-top: 4px; font: 800 clamp(10px, 1.5vh, 14px) var(--font-ui); letter-spacing: 1.5px; }
 .board > small em { font-style: normal; color: var(--yellow); font-size: 1.25em; margin-left: 4px; }
 
