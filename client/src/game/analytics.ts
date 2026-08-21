@@ -21,7 +21,7 @@ const DEVICE_KEY = "fatstack-device-id";
 export const analyticsEnabled = Boolean(KEY);
 
 /** A stable per-device id so you can tell cabinets and phones apart. Not a person. */
-function deviceId(): string {
+export function deviceId(): string {
   try {
     let id = localStorage.getItem(DEVICE_KEY);
     if (!id) {

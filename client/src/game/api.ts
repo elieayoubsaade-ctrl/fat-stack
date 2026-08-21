@@ -14,6 +14,8 @@
  *   dead connection costs nobody their round.
  */
 
+import { deviceId } from "./analytics";
+
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
 
@@ -130,6 +132,9 @@ function toPayload(play: PlaySummary) {
     p_character_id: play.characterId,
     p_ended_reason: play.endedReason,
     p_duration: Number(play.durationSeconds.toFixed(2)),
+    // Anonymous per-browser id — identifies a phone or a cabinet, never a person.
+    // Lets us count players, not just rounds.
+    p_device_id: deviceId(),
   };
 }
 
