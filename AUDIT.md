@@ -1,235 +1,293 @@
-# Super Stack — Full Review
+# Super Stack — Complete Game Audit (v3)
 
-> **Progress — Step A (game core) is done.** Fixed: the round timer, flat scoring, missing
-> tiger-crunch lid, no difficulty curve, free drops, the fake NEXT UP panel, teleporting
-> movement, monitor-dependent speed, silent gameplay, and the "0 points = well done" results
-> screen. Balance is now measured by `pnpm balance`, not guessed. **Steps B (compose the
-> screens for a TV) and C (finish the art, cut the weight) are still open** — everything in
-> Part 1.2, 1.3, 1.4 and Part 3 below still stands.
+**Goal:** a smooth, addictive, genuinely playable arcade game with clean UI/UX.
+**Audited:** the live build at https://fatsandwich-super-stack.netlify.app — every screen, every
+interaction, the full codebase, plus 300 simulated rounds to measure fairness and pacing.
+Earlier audits covered "what's broken"; this one covers **what stands between the current game
+and a great one.**
 
-Branch: `elie-edits`
+## Scorecard
 
-Reviewed by running the game at **1920×1080** (event-TV size), walking every screen, measuring the
-real on-screen layout, and reading every line of game logic. Install, type-check and production build
-all pass — so this is not a "broken build". It is a game that has not been balanced, composed, or
-finished.
-
-**Verdict: the screens exist and function, but the game underneath them has no design tension, and
-the layout was never composed for a widescreen TV.**
-
----
-
-# Part 1 — What's on screen
-
-## 1.1 The screen flow does exist
-
-For the record, all five screens render and connect correctly:
-
-**Start → How To Stack → Play → Results → Leaderboard**, with `TODAY'S TOP STACKS` in the header
-jumping to the board from anywhere. Space/Enter and the red button both advance. I walked the whole
-loop.
-
-So if the flow appeared to be missing, it is one of these — worth confirming which:
-
-- The **`?demo` URL parameter skips the start screen entirely** and drops straight into autoplay
-  ([SuperStackGame.tsx:236-240](client/src/game/SuperStackGame.tsx#L236)). If the link being opened
-  has `?demo` on it, pages one and two never appear.
-- The screens are so empty that they don't read as designed pages (see below).
-- Or "pages" means **game levels/stages**, which genuinely do not exist — there is one flat 60-second
-  round and nothing else.
-
-## 1.2 The layout was not composed for a 16:9 screen
-
-Measured at 1920×1080:
-
-| Screen | Problem | Measured |
+| Area | Grade | One-line verdict |
 |---|---|---|
-| **Play** | The play lane is **square on a widescreen** | Lane is 872×897 px — a **0.97:1 box on a 1.78:1 screen** |
-| **Play** | Side rails are mostly empty air | Each rail is **450 px wide holding a 158 px card** — 584 px of the screen (30%) is padding |
-| **Tutorial** | Content clings to the top | **383 px of dead space below the button — 35% of the screen** |
-| **Start** | The centre panel is an island | Panel is **680 px wide on a 1920 px screen — 35% of the width** |
-
-The tutorial dead space has a precise cause: `.screen-overlay` sets `place-items:center`, then
-`.tutorial-screen` overrides it with `display:flex` and never sets `justify-content:center`
-([index.css](client/src/index.css)). The centring is silently cancelled, so everything piles at the
-top.
-
-## 1.3 Things overlapping and cut off
-
-- **The "CATCH IT!" banner sits on top of the player character.** Measured overlap: player occupies
-  y 853–1050, the banner y 980–1037 — straight across the character's body. The player is obscured
-  during play.
-- **Pastrami Mami overlaps the "TODAY'S TOP STACK" score burst** on the start screen. Confirmed
-  collision.
-- **Both characters are cut off by the bottom of the screen.** `transform:scale(1.65)` pushes Mami's
-  box to 1099 px and Captain Tuna's to 1107 px on a 1080 px screen — 19 px and 27 px of each
-  character is chopped off.
-- **The TIME counter is 84×44 px** on a 1920 px screen. That is unreadable from across an event
-  space, and it is the single most important number in a timed game.
-
-## 1.4 Art that isn't finished
-
-- **No game-world background at all.** `super-stack-deli-counter-game-world.png` is a 493-byte error
-  placeholder reading *"Image generation failed"*, saved with a `.png` name but containing SVG. The
-  browser can't decode it, so the whole game falls back to flat cream. The deli counter does not
-  exist.
-- **7 of 10 ingredients are typed symbols**, not food: lettuce `≈`, tomato `●`, onion `◉`, pickles
-  `≋`, pepperoncini `✺`, bacon `✦`, hazard `!`. Only turkey, pastrami and roast beef have artwork.
-  `FALLING_ASSET_SYSTEM.md` explicitly forbids "geometric substitutes, letter glyphs, generic
-  circles, or emoji".
-- **The characters are full artwork, not clean cut-outs.** Pastrami Mami and Captain Tuna carry their
-  printed names inside the image, so their names appear as part of the art at odd angles.
-- **The logo is a JPEG with a white box behind it**, sitting on cream — it reads as a broken tile.
-- **The lane background is lined notebook paper with red comic starbursts baked into it.** Those
-  bursts look like floating debris and compete with the actual falling ingredients.
+| Core game rules | **B** | Balanced, skill-testing, verified by simulation — the foundation is now good |
+| Game feel ("juice") | **D** | Catches feel like spreadsheet updates. Almost zero visual feedback |
+| Fairness | **B–** | Everything is catchable, but hazard streaks feel rigged 1.4×/round |
+| Addictive loop | **C–** | The "one more go" machinery is missing: no celebration, no near-miss, no name on the board |
+| Screen layout | **D+** | Square lane on a widescreen, 30% of the play screen is empty air |
+| Visual design | **C–** | Brand colours are right; logo, lane texture and hierarchy are not |
+| Onboarding / UX flow | **C** | Flow works, but the game's key rule (the lid) is never taught |
+| Technical smoothness | **C+** | Solid simulation; but movement has built-in input lag and 900KB of dead code ships |
 
 ---
 
-# Part 2 — Why the game isn't fun
+# 1 · The addictive loop — what's missing
 
-This is the core of it. The game has **one difficulty knob, one way to lose, and no decisions to
-make.**
+An arcade game keeps people playing through a loop: **act → feedback → grow → almost-win → try again.**
+The rules now support this loop, but almost every *emotional* beat in it is silent. These are the seven
+loop-breakers, in order of damage:
 
-## 2.1 There are no scoring decisions
+### 1.1 Catches have no visual reward
+Catch a 250-point pastrami at combo x4 and here is everything that happens on screen: a number in the
+left rail changes, and a small banner changes its text. No points fly up from the catch. Nothing
+flashes. The sandwich doesn't react. The item just vanishes.
 
-Every ingredient is worth **exactly the same 100 points** ([line 170](client/src/game/SuperStackGame.tsx#L170))
-and every ingredient **falls at the same random speed** ([line 51](client/src/game/SuperStackGame.tsx#L51)).
+**This is the single biggest gap in the game.** The fix list (each is small):
+- **Floating score text** at the catch point — "+1,000" popping up and fading. The player must *see*
+  the reward where the action happened, not do mental math against a distant counter.
+- The stack/player **squashes** slightly on catch (classic squash-and-stretch, 100ms).
+- A brief **burst** (CSS particles or a comic starburst flash) on protein and lid catches.
+- **Screen shake** (4–6px, 150ms) on a fumble — losing a life should feel physical.
+- The score counter should **tick up** rather than jump.
 
-The approved design says otherwise:
+### 1.2 The sandwich you're building is invisible
+The entire fantasy is "build the biggest fat stack" — and the stack renders as up to eight
+**7-pixel-tall CSS ovals** hidden behind the player character. The one thing the game is named after
+is unreadable from two feet away, let alone across a room.
 
-| Item | Design doc | In the game |
-|---|---:|---:|
-| Turkey / pastrami / roast beef | 250, slow, wide | 100, same speed |
-| Bacon bits | 125, medium | 100, same speed |
-| Lettuce, tomato, onion, pickle, pepperoncini | 100, fast | 100, same speed |
-| **Tiger-crunch lid** | **750 + completion bonus** | **does not exist** |
+The stack should be the hero: big, layered, comically tall as it grows, wobbling slightly, with each
+ingredient visibly distinct. When it's one lid away from completion it should glow. This is both the
+core feedback mechanism *and* the spectator hook — a tall teetering sandwich on an event TV is what
+makes the next person queue up.
 
-Because a tomato and a pastrami are worth the same and behave the same, there is never a reason to
-choose one over the other. The player just drifts toward whatever is nearest. **That is why it feels
-flat.**
+### 1.3 The lid rule is a secret
+To spawn the tiger-crunch lid you need 2 proteins + 4 toppings stacked. **Nothing on screen ever
+communicates this.** Players can't work toward a goal they can't see — the lid just appears
+"randomly", which throws away the anticipation the mechanic was built for.
 
-## 2.2 The maths of a round
+Natural fix that uses existing brand assets: turn Pastrami Mami's "NEXT UP" ticket into an **ORDER
+ticket** — 🥩🥩 🥬🥬🥬🥬 with items checked off as you stack them, then "LID INCOMING!" when
+qualified. Suddenly the player has a visible mission at all times.
 
-With a 780 ms → 420 ms spawn ramp over 60 seconds:
+### 1.4 Nothing celebrates a high score
+Beat every score on today's board and the results screen says… "THAT'S A FAT STACK!", same as any
+round. The single most triumphant moment the game can produce — **NEW #1 TODAY** — literally cannot
+be triggered. There is also no rank reveal ("You came 3rd today"), no near-miss ("1,200 short of the
+board — one more pastrami"), and no name entry, so the board fills with rows all called "YOU".
 
-- roughly **100 items per round**, of which **~12 are hazards** (fixed 12%)
-- the catch zone is **26 units wide** in a spawn range of 80 units — so **a third of everything that
-  falls lands on you if you stand still**
-- expected hazards caught while standing still: **12 × 0.325 ≈ 4** — and 3 ends the round
+The results screen should be a sequence, not a card: score ticks up → rank slides in → if top-5,
+arcade-style 3-initial entry → "PLAY AGAIN" pulsing. That sequence *is* the retry loop.
 
-I tested exactly this: **standing completely still, the round ended in 15 seconds.** Doing nothing
-kills you, which sounds like pressure but isn't — because:
+### 1.5 The round starts and ends with no punctuation
+Press start and items are already falling while your hand is still on the button. The round ends by
+cutting instantly to the results card. Add a **"3 · 2 · 1 · STACK!"** count-in (~1.5s) and a
+**"TIME!"** freeze-frame beat (~0.8s) before results. Phases change silently too — "RUSH!" should
+slam onto the screen with a sound, because it's the moment the game gets exciting.
 
-## 2.3 Missing food is free
+### 1.6 The RUSH doesn't look like a rush
+Measured across 300 simulated rounds: average items on screen is **2.2 in WARM UP → 3.1 in RUSH**,
+peaking at 6. The finale of the round is 40% busier than the warm-up — it should feel *twice* as
+busy. The `maxItems: 9` cap is never even reached. Spawn interval in RUSH should drop to ~380–420ms
+(fairness holds: see §3).
 
-Only touching a hazard costs anything. Dropping an ingredient has no penalty at all. So the game
-never punishes caution, only contact. There is no reason to chase a difficult catch, and no cost to
-letting a whole wave fall.
-
-**One failure mode, no reward for risk.** That combination is what "out of balance" feels like.
-
-## 2.4 The only thing that gets harder is spawn rate
-
-Fall speed never changes. Hazard rate never changes. Nothing escalates but the number of objects. No
-waves, no stages, no rush at the end, no reason for a 60-second round to feel different at second 55
-than at second 5.
-
-## 2.5 The "NEXT UP" panel is fiction
-
-It shows `GOOD_ITEMS[(stack.length + 1) % 9]` ([line 243](client/src/game/SuperStackGame.tsx#L243)) —
-a value derived from how many items you've stacked, **completely unrelated to what actually falls
-next**, which is random. It is presented to the player as information, and it isn't. Either wire it
-to the real spawn queue or remove it.
-
-## 2.6 The round has no fixed length
-
-The 60-second clock **restarts every time you catch a good ingredient.** Measured live: the clock sat
-at 60 while the score climbed 1,100 → 3,600, then finally counted down only once catching stopped.
-
-Cause: the game loop lists `catchItem` as a dependency ([line 214](client/src/game/SuperStackGame.tsx#L214));
-`catchItem` is rebuilt whenever the combo changes ([line 173](client/src/game/SuperStackGame.tsx#L173));
-rebuilding restarts the loop and resets its start time ([line 177](client/src/game/SuperStackGame.tsx#L177)).
-
-A good player is never timed out. For an event with a queue, that alone is disqualifying.
-
-## 2.7 Scoring zero is congratulated
-
-A round that ended with **0 points** still displays **"THAT'S A FAT STACK!"** and **"NO FUMBLES.
-NICE."** There is no losing state, no "so close", no reason to feel you did badly — or well.
-
-## 2.8 The leaderboard contradicts itself
-
-- Printed on screen: **"SCORE 5,000+ TO JOIN THE HIGH SCORE CLUB"**
-- In the code: anyone above **300** is admitted ([line 129](client/src/game/SuperStackGame.tsx#L129))
-- Every entry is saved as the name **"YOU"** — no name entry, so the board fills with identical rows
-- Stored in one browser's local storage: **a second screen shows a different board, and clearing
-  browser data erases the day**
-
-## 2.9 Movement doesn't feel like an arcade cabinet
-
-Each key press **teleports** the player 7% across the lane ([line 220](client/src/game/SuperStackGame.tsx#L220)).
-Holding the joystick relies on the operating system's key-repeat, which stalls for about half a
-second before repeating. `PLAN.md` specifies movement should "follow held arrow input" — it doesn't.
-
-## 2.10 Difficulty depends on the monitor
-
-Items move a fixed distance **per drawn frame** rather than per second
-([line 200](client/src/game/SuperStackGame.tsx#L200)). On a 120 Hz screen the game runs at roughly
-double speed; if the machine stutters, items slow down and pile up.
-
-*(I measured severe pile-up in testing, but the test browser throttles animation, so I can't put a
-real number on how bad this is on your hardware. The design flaw is real regardless: the game's
-difficulty should not depend on which TV it is plugged into.)*
-
-## 2.11 No sound
-
-Nothing. No catch sound, no fumble sound, no music, no countdown. A silent cabinet at a loud event
-attracts nobody, and the player gets no feedback for a good catch beyond a small banner that is
-sitting on top of their own character.
+### 1.7 No attract mode
+At an event, an idle screen is a dead stand. The demo autoplay already exists (`?demo`) but only via
+URL. After ~20s idle on the start screen, the game should slide into autoplay with a "PRESS TO PLAY"
+overlay, and any input snaps back to the start screen. This is standard arcade-cabinet behaviour and
+it's nearly free to add since the autopilot is already written.
 
 ---
 
-# Part 3 — Weight and leftovers
+# 2 · Game feel — input and motion
 
-| Issue | Detail |
-|---|---|
-| **~29 MB of images load before play** | Ingredient art is **1920×1920 px displayed at 65 px**. The Super Stack icon alone is 6.5 MB |
-| **38 MB more shipped but never used** | Four `_original` duplicates plus mockup and art-direction sheets |
-| **367 KB of builder tooling injected into the page** | `vite-plugin-manus-runtime` inlines a script — including a **second copy of React** — into production HTML |
-| **A 3D engine drawing nothing** | Babylon.js runs a render loop over an empty transparent canvas; it is the bulk of the 848 KB bundle |
-| **A guaranteed 404 on every load** | The analytics tag ships unresolved: the browser requests `%VITE_ANALYTICS_ENDPOINT%/umami` |
-| **Dead code** | 53 unused UI-kit components, plus `ErrorBoundary`, `ManusDialog`, `Map`, `pages/Home`, `pages/NotFound`, and a 14 KB `template.json` scaffold copy |
-| **`pnpm start` fails on Windows** | Unix-only syntax in the script. `pnpm dev` and `pnpm build` work fine |
+### 2.1 Movement has ~120ms of built-in lag ⚠
+`index.css` still has `transition: left 120ms` on `.stack-on-tray` — written for the old
+teleport-style movement. The new engine updates position every frame, so the CSS transition now makes
+the sprite **chase its real position with ~120ms of rubber-banding**. This is why movement will feel
+slightly "floaty" even though the simulation is exact. Remove the transition (and animate with
+`transform` instead of `left`, which also avoids layout work every frame — this matters on cheap
+event-TV hardware).
 
----
+### 2.2 Movement dynamics
+Constant-speed slide (1.03s to cross the full lane) is a reasonable arcade baseline. Two upgrades
+worth testing once the transition-lag is fixed:
+- **30–50ms of ease-in** so direction changes feel weighty rather than robotic (keep it tiny; heavy
+  easing would undo the fix above).
+- A touch more speed in RUSH (the phase already scales fall speed ×1.45 but the player never speeds up).
 
-# Part 4 — What I'd actually do
+### 2.3 Mobile controls are the weakest input path
+On-screen ◄ ► buttons require thumb-hopping. The standard for catch games is **drag anywhere —
+sandwich follows your finger x-position**. Big improvement, small change. Add `navigator.vibrate(30)`
+on catch / `(80)` on fumble for cheap haptic feedback.
 
-Fixing these one at a time will not produce a good game, because the problems are not independent:
-the flat scoring, the single failure mode, the flat difficulty and the missing lid are all *the same
-missing design*. I'd treat it as three pieces of work.
+### 2.4 Items fall dead straight
+Every item falls at fixed rotation in a straight line. Cheap life: slow rotation during fall (±20°
+drift), and give bacon bits a slight sway. Not per-item physics — just enough motion that the lane
+looks alive.
 
-### A. Make it a real game (the important one)
-Rebuild the round logic around the design doc that already exists: per-ingredient values and speeds,
-the tiger-crunch lid as a completion move, a difficulty curve across the 60 seconds, a genuine reason
-to take risks, and a fixed round length. Add sound.
-
-### B. Compose the screens for a TV
-Fill the 16:9 frame properly: a wide lane instead of a square box, a readable clock, characters that
-aren't cut off or overlapping, and a real background behind the counter. Give the start and tutorial
-screens a composition rather than a centred island.
-
-### C. Finish the art and cut the weight
-Draw the seven missing ingredients, replace the failed background, clean cut-outs for the characters,
-and resize everything to display size. Strip the builder tooling and the unused 3D engine.
-
-**Order:** A before B before C. There is no point polishing the composition of a round that isn't fun
-yet.
+### 2.5 Sound is functional but thin
+The synth SFX layer works (catches rise with combo — good). Missing: an ambient **music loop**
+(tension rises in RUSH), a distinct "lid incoming" sting, and a "3-2-1" count-in sound. Also: **there
+is no mute button anywhere in the UI** even though the audio module supports it. An event staffer
+must be able to silence the cabinet; testers in an office will want it too.
 
 ---
 
-# Verified working
+# 3 · Fairness — measured
 
-- `pnpm install`, `pnpm check` (no type errors), `pnpm build` — all pass
-- All five screens render and navigate correctly; keyboard and on-screen controls both work
-- Scoring, combo multiplier, fumble counting and local high-score saving all function as written
+Simulation of 300 full rounds (static-centre player for spawn measurements):
+
+| Check | Result | Verdict |
+|---|---|---|
+| Good items impossible to reach from spawn | **0.0%** | ✅ Fair — every item is catchable |
+| Worst-case margin (RUSH topping, far edge) | **+0.16s** | ✅ Tight but humanly possible |
+| Back-to-back hazard spawns | **1.38 per round** | ⚠ Feels rigged |
+| Hidden-rule deaths (lid) | n/a | ⚠ see §1.3 |
+
+**The hazard-streak problem:** spawns are independent random rolls, so double (occasionally triple)
+hazards cluster. In a 3-life game, a double-hazard drop right above the player reads as "the game
+cheated" — the exact feeling that makes people walk away rather than retry. Standard fix is a
+**shuffle-bag / pity system**: never allow two hazards in a row, and guarantee at least one protein
+every N spawns so droughts can't happen either. Randomness players *perceive* as fair is slightly
+less random than true random.
+
+**A UX trap in NEXT UP:** the ticket happily shows a hazard as "next up" with the same friendly
+styling as food. A new player reads "NEXT UP: Sauce cup" as *catch this*. Hazards in the ticket need
+danger styling — red border, ✕, "DODGE!" label. (Strategically, warning the player is great — it
+creates a plan-ahead moment — it just has to *read* as a warning.)
+
+**Two small correctness notes:**
+- The live score displays `padStart(5, "0")` but tuned scores reach 90,000+ — six digits, and no
+  thousands separators during play. Format the live score properly.
+- Balance file still says `maxItems: 9` "so the screen never floods" — the real max observed is 6;
+  after the RUSH densification (§1.6) re-verify with `pnpm balance`.
+
+---
+
+# 4 · Screen-by-screen UI/UX
+
+*(Layout measurements at 1920×1080 from the previous audit still stand — step B was never started.
+Summarised here so this document is complete.)*
+
+### 4.1 Start screen
+- Centre panel occupies **35% of the screen width**; the rest is empty cream.
+- Pastrami Mami **overlaps** the TODAY'S TOP STACK badge; both characters are **cut off** at the
+  bottom edge (scale transform pushes them past the viewport).
+- CTA says "PRESS RED BUTTON TO PLAY" — correct for the arcade cabinet, confusing on a phone or
+  laptop where there is no red button. Detect input mode (touch vs. keyboard) and adapt the copy.
+- No attract mode (§1.7).
+
+### 4.2 How-to screen
+- 4 cards work as content, but **35% of the screen below the button is dead space** (a one-line CSS
+  fix: the flex container lost its centring).
+- It's static. The cards should *demonstrate* — the joystick doodle wiggling, an item dropping into a
+  stack, a hazard bouncing off with an ✕. Motion teaches faster than labels.
+- The lid rule ("2 meats + 4 toppings unlock the lid") is still not stated — the FINISH card just
+  shows bread.
+- **Repeat-player friction:** every player passes through this screen every time via the start
+  screen. After the first play of a session, "PRESS RED BUTTON TO PLAY" should go straight to the
+  countdown, with how-to reachable but skippable.
+
+### 4.3 Play screen
+- The lane is a **~1:1 square centred in a 16:9 frame**; each side rail is 450px wide holding 158px
+  cards. ~30% of the screen is padding. The lane should be wide — it *is* the game.
+- **TIME is 84×44px** — the most important number on screen is the least visible. During the last
+  10 seconds it should dominate.
+- The **"CATCH IT!" banner sits on top of the player character** at the bottom-centre — the message
+  overlaps the thing you're controlling. Move messages to mid-lane height, or make them float up from
+  the catch position (which §1.1 wants anyway).
+- The **catch zone is invisible.** Players learn by dropping things. A subtle tray-line / shadow zone
+  at y=76–90 shows where catching happens; item shadows growing as they approach would do the same
+  job more elegantly.
+- The lane texture is lined notebook paper with **baked-in red starbursts that read as game objects**
+  and compete with real items. The playfield needs to be the *calmest* part of the screen, not the
+  busiest: plain deli-paper texture, keep the decoration in the rails.
+- Phase flag ("WARM UP") is a 9px label inside the timer chip — invisible. Phase changes deserve a
+  full-lane announcement (§1.5).
+
+### 4.4 Results screen
+Structurally good (receipt with breakdown, itemised bonuses). Missing the sequence that makes it
+land: count-up, rank reveal, NEW HIGH SCORE moment, name entry (§1.4). The characters are also
+absent-or-clipped issues here as on start.
+
+### 4.5 Leaderboard
+- Seeds are placeholder names with plausible scores — fine.
+- The cutoff copy ("SCORE 57,901+ TO JOIN") is honest now — good.
+- Every real entry says "YOU" — needs the 3-initials entry to mean anything.
+- **Per-device storage:** two screens at one event show different boards, and clearing browser data
+  wipes the day. For a single-cabinet event this is acceptable; for anything more it needs a tiny
+  backend. **Decision needed before the event, not a code problem.**
+
+### 4.6 Missing system UI
+No pause. No mute (§2.5). No fullscreen button (an event cabinet wants `requestFullscreen`, and
+browser chrome kills the look). No Escape-to-quit-round. All small.
+
+---
+
+# 5 · Visual design
+
+- **Logo:** a JPEG in a white box sitting on cream — reads as a broken image tile. Needs the
+  transparent-background version (the brand library has cut-out logo art).
+- **Characters:** the full-artwork exports with names baked in at angles ("PASTRAMI MAMI!") — they
+  read as stickers pasted on, not characters *in* the scene. The brand library has clean transparent
+  cut-outs (`brand-reference-library/02_Character_Artwork/02_Transparent_Cutouts_PNG/`) — use those,
+  and let characters *react*: Captain Tuna flinches on a fumble, Mami cheers on a Super Stack.
+  Characters that respond to gameplay are worth more than any static art.
+- **Typography:** Impact for display is period-correct for the comic style, but the supporting
+  hierarchy collapses at distance — labels of 9–11px everywhere. For an event TV, minimum ~18px for
+  any label that matters; the type scale needs 3 sizes, not 8.
+- **The 7 placeholder ingredients** (CSS shapes) are readable but flat, and the real art brief
+  already exists in `FALLING_ASSET_SYSTEM.md`. The swap point is one line per item in
+  `Ingredient.tsx`. This is a content task, not a code task — it can run in parallel with everything
+  else.
+- **Colour:** the cream/purple/red system is right and matches the palette JSON. The main sin is
+  *noise* — starburst decorations on the field of play (§4.3) and purple 90%-opacity gradient rails
+  inside the lane. Decoration belongs outside the lane.
+- **No favicon and no social meta.** The tab shows a blank page icon (`/favicon.ico` falls through
+  the SPA redirect and returns HTML). No `og:` tags — pasting the link into WhatsApp/Slack/iMessage
+  shows nothing. For a link you're sharing around for testing, an icon + a title/image card is a
+  10-minute fix that changes how legit it looks.
+
+---
+
+# 6 · Technical smoothness
+
+| Issue | Size | Why it matters |
+|---|---|---|
+| CSS transition on player movement | — | ~120ms perceived input lag (§2.1) — **the** feel bug |
+| Items positioned via `top/left` % | — | Forces layout every frame; `transform` is the smooth path on weak hardware |
+| Babylon.js still ships | ~600KB of the 860KB JS | Renders an empty transparent canvas. Nothing uses it. Remove engine + canvas |
+| Manus builder runtime inlined in HTML | 367KB (105KB gz) | Includes a **second copy of React**; delays first paint; pure leftover |
+| 53 unused UI-kit components + dead pages | — | Noise; slows every future search/build |
+| React re-render per frame | — | Fine at this scale; revisit only if TV hardware stutters after transform fix |
+
+Current transfer: ~1.7MB total (down from 69MB). After removing Babylon + the manus runtime it lands
+around **500–600KB** — near-instant even on venue Wi-Fi. `pnpm start` is also still broken on
+Windows (Unix-only env syntax) — trivial fix, worth doing for completeness.
+
+---
+
+# 7 · The roadmap
+
+Ordered so every phase is independently shippable and testable on the live URL.
+
+### Phase 1 — Feel (the game becomes fun to touch)
+1. Kill the 120ms movement lag; transform-based positioning
+2. Floating score numbers, catch flash, fumble screen-shake, squash on catch
+3. Count-in ("3·2·1·STACK!"), "TIME!" beat, phase slams ("RUSH!")
+4. Shuffle-bag spawner (no double hazards, no protein droughts) + denser RUSH
+5. Hazard warning styling in NEXT UP; visible catch zone (item shadows)
+6. Mute button; live score formatting; mobile drag control + haptics
+
+### Phase 2 — The loop (the game becomes addictive)
+7. Order-ticket lid progress (the hidden rule becomes the visible mission)
+8. Hero sandwich stack — big, layered, wobbling, glowing when lid-ready
+9. Results sequence: count-up → rank reveal → NEW #1 celebration → 3-initial entry
+10. Attract mode after 20s idle
+11. Character reactions (Tuna flinches, Mami cheers)
+12. Music loop + remaining stings
+
+### Phase 3 — The look (the game becomes clean)
+13. Recompose all screens for 16:9: wide lane, giant clock, no overlaps, no dead zones
+14. Clean lane field; decoration moved to rails; type scale for TV distance
+15. Transparent logo + clean character cut-outs from the brand library
+16. Favicon + og-tags; fullscreen button
+17. Strip Babylon + manus runtime (load drops to ~0.5MB)
+
+### Parallel track — Art (not code)
+Real ingredient art for the 7 placeholders + lid + 3 hazards per `FALLING_ASSET_SYSTEM.md`, the
+deli-counter background, and (decision) whether the leaderboard needs to be shared across devices.
+
+---
+
+*Previous audits (v1 code audit, v2 screen review) are in git history. Balance harness: `pnpm balance`.*
