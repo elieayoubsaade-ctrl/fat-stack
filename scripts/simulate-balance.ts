@@ -16,7 +16,7 @@
  *    badly (greed without an exit must be punished by collapse and the final whistle).
  */
 import { ITEMS, ROUND, TOWER } from "../client/src/game/config";
-import { bankValue, catchReach, createRound, stepRound, type Round } from "../client/src/game/round";
+import { bankValue, catchBand, catchReach, createRound, stepRound, type Round } from "../client/src/game/round";
 
 const FRAME = 1 / 60;
 const ROUNDS = 400;
@@ -80,7 +80,7 @@ function decide(round: Round, player: Player, random: () => number): number {
     const g = ITEMS[item.kind].group;
     const mustDodge = g === "hazard" || (g === "lid" && !wantsLid(round, player));
     if (!mustDodge) continue;
-    const timeToBand = (ROUND.catchTop - item.y) / item.speed;
+    const timeToBand = (catchBand(round).top - item.y) / item.speed;
     if (timeToBand > player.lookahead || timeToBand < -0.2) continue;
     if (Math.abs(item.x - round.playerX) < catchReach(item.kind) + player.dodgeMargin) {
       return item.x > round.playerX ? -1 : 1;
@@ -95,7 +95,7 @@ function decide(round: Round, player: Player, random: () => number): number {
     if (spec.group === "hazard") continue;
     if (spec.group === "lid" && !wantsLid(round, player)) continue;
 
-    const timeToFloor = (ROUND.catchBottom - item.y) / item.speed;
+    const timeToFloor = (catchBand(round).bottom - item.y) / item.speed;
     if (timeToFloor < -0.1) continue;
     const travel = Math.abs(item.x - round.playerX) / ROUND.playerSpeed;
     if (travel > timeToFloor + 0.15) continue;

@@ -7,10 +7,27 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gameAssets } from "./assets";
+import Scene from "./Scene";
+import Player, { type PlayerMood } from "./Player";
+import Hud from "./Hud";
+import StartScreen from "./screens/StartScreen";
+import SelectScreen from "./screens/SelectScreen";
+import HowToScreen from "./screens/HowToScreen";
+import ResultsScreen, { type ResultStage, type RunSummary } from "./screens/ResultsScreen";
+import BoardScreen from "./screens/BoardScreen";
+import {
+  backendConfigured,
+  fetchLeaderboard,
+  flushQueuedPlays,
+  setInitials as pushInitials,
+  submitPlay,
+  type BoardEntry,
+} from "./api";
+import { track } from "./analytics";
 import Ingredient, { artFor } from "./Ingredient";
 import { isMuted, primeAudio, setMuted, setMusicIntensity, sfx, startMusic, stopMusic } from "./audio";
 import { CHARACTERS, characterById } from "./characters";
-import { COUNTDOWN_SECONDS, ITEMS, ROUND, TOWER, type ItemKind } from "./config";
+import { COUNTDOWN_SECONDS, ITEMS, LEADERBOARD_SIZE, ROUND, TOWER, type ItemKind } from "./config";
 import {
   autoDirection,
   bankValue,
@@ -21,17 +38,6 @@ import {
   type GameEvent,
   type Round,
 } from "./round";
-import {
-  backendConfigured,
-  claimUrl,
-  fetchLeaderboard,
-  flushQueuedPlays,
-  setInitials as pushInitials,
-  submitPlay,
-  type BoardEntry,
-} from "./api";
-import { track } from "./analytics";
-import QrCode from "./QrCode";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Helpers and local types
@@ -51,30 +57,17 @@ type View = {
   banks: number;
   timeLeft: number;
   phaseLabel: string;
+  direction: number;
   message: string;
   messageTone: string;
   messageId: number;
   nextKind: ItemKind;
 };
 
-type RunSummary = {
-  score: number;
-  banks: number;
-  biggestBank: number;
-  bestCombo: number;
-  fumbles: number;
-  collapses: number;
-  caught: number;
-  potLost: number;
-  bonusClean: number;
-  bonusSurvived: number;
-  reason: EndReason;
-};
 
 type FloatText = { id: number; text: string; x: number; y: number; tone: "topping" | "protein" | "bank" | "bad" };
 type Slam = { id: number; text: string; tone: "phase" | "go" | "warn" | "time" };
 type Debris = { id: number; kind: ItemKind; dx: number; rot: number };
-type ResultStage = "counting" | "initials" | "done";
 
 const BEST_KEY = "fatsandwich-super-stack-best";
 const CHAR_KEY = "fatsandwich-super-stack-char";
@@ -109,6 +102,7 @@ function toView(round: Round): View {
     banks: round.banks,
     timeLeft: round.timeLeft,
     phaseLabel: round.phaseLabel,
+    direction: round.direction,
     message: round.message,
     messageTone: round.messageTone,
     messageId: round.messageId,
@@ -134,6 +128,8 @@ export default function SuperStackGame() {
   const [lastRun, setLastRun] = useState<RunSummary | null>(null);
   const [board, setBoard] = useState<BoardEntry[]>([]);
   const [boardLive, setBoardLive] = useState(false);
+  const [qualified, setQualified] = useState(false);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const [best, setBest] = useState<number>(loadBest);
   const [muted, setMutedState] = useState(isMuted());
   const [paused, setPaused] = useState(false);
@@ -143,9 +139,11 @@ export default function SuperStackGame() {
   const [floats, setFloats] = useState<FloatText[]>([]);
   const [debris, setDebris] = useState<Debris[]>([]);
   const [shakeId, setShakeId] = useState(0);
-  const [tunaReact, setTunaReact] = useState(0);
-  const [mamiReact, setMamiReact] = useState(0);
   const [scorePulse, setScorePulse] = useState(0);
+  const [hatchFlash, setHatchFlash] = useState(0);
+  const [mood, setMood] = useState<PlayerMood>("idle");
+  const [moodKey, setMoodKey] = useState(0);
+  const moodTimer = useRef(0);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [charId, setCharId] = useState<string>(() => {
     try {
@@ -164,11 +162,9 @@ export default function SuperStackGame() {
   // Results sequencing
   const [resultStage, setResultStage] = useState<ResultStage>("done");
   const [countedScore, setCountedScore] = useState(0);
-  const [claimToken, setClaimToken] = useState<string | null>(null);
-  const [savedRank, setSavedRank] = useState<number | null>(null);
-  const [qualified, setQualified] = useState(false);
-  const [initials, setInitialsValue] = useState<[number, number, number]>([0, 0, 0]);
+  const [initials, setInitials] = useState<[number, number, number]>([0, 0, 0]);
   const [initialSlot, setInitialSlot] = useState(0);
+  const [savedRank, setSavedRank] = useState<number | null>(null);
 
   const roundRef = useRef<Round | null>(null);
   const keysRef = useRef({ left: false, right: false });
@@ -176,6 +172,7 @@ export default function SuperStackGame() {
   const pausedRef = useRef(false);
   const attractRef = useRef(false);
   const hasPlayedRef = useRef(false);
+  const resultStageRef = useRef<ResultStage>("done");
   const countdownRef = useRef(0);
   const lastTowerRef = useRef<ItemKind[]>([]);
   const laneRef = useRef<HTMLDivElement>(null);
@@ -196,7 +193,10 @@ export default function SuperStackGame() {
   useEffect(() => {
     hasPlayedRef.current = hasPlayed;
   }, [hasPlayed]);
-  /** Pull the live board, and push anything a dropped connection stranded earlier. */
+  useEffect(() => {
+    resultStageRef.current = resultStage;
+  }, [resultStage]);
+  /** Pull the live board; push anything a dropped connection stranded earlier. */
   const refreshBoard = useCallback(async () => {
     const { entries, live } = await fetchLeaderboard();
     setBoard(entries);
@@ -217,8 +217,8 @@ export default function SuperStackGame() {
     localStorage.setItem(CHAR_KEY, charId);
   }, [charId]);
 
-  const topScore = board[0]?.score ?? 0;
   const boardCutoff = board.length >= 10 ? (board[board.length - 1]?.score ?? 0) : 0;
+  const topScore = board[0]?.score ?? 0;
 
   const pushSlam = useCallback((text: string, tone: Slam["tone"]) => {
     uidRef.current += 1;
@@ -234,6 +234,14 @@ export default function SuperStackGame() {
     window.setTimeout(() => setFloats((current) => current.filter((f) => f.id !== id)), 1000);
   }, []);
 
+  /** Show a mood for a moment, then settle back to idle (or panic, if the tower is tall). */
+  const setMoodFor = useCallback((next: PlayerMood, ms: number) => {
+    window.clearTimeout(moodTimer.current);
+    setMood(next);
+    setMoodKey((n) => n + 1);
+    moodTimer.current = window.setTimeout(() => setMood("idle"), ms);
+  }, []);
+
   /** Turn one frame's worth of round events into sound, floats, shakes and reactions. */
   const drainEvents = useCallback(
     (events: GameEvent[]) => {
@@ -243,6 +251,7 @@ export default function SuperStackGame() {
             if (event.group === "protein") sfx.catchProtein(event.combo);
             else sfx.catchTopping(event.combo);
             pushFloat(`+${fmt(event.amount)}`, event.x, event.y, event.group);
+            setMoodFor("catch", 180);
             vibrate(20);
             break;
           case "combo-up":
@@ -252,13 +261,13 @@ export default function SuperStackGame() {
             sfx.bank(event.layers);
             pushFloat(`+${fmt(event.amount)} BANKED!`, event.x, Math.min(70, event.y), "bank");
             setScorePulse((n) => n + 1);
-            setMamiReact((n) => n + 1);
+            setMoodFor("cheer", 500);
             vibrate([40, 40, 40]);
             break;
           case "collapse": {
             sfx.collapse();
             setShakeId((n) => n + 1);
-            setTunaReact((n) => n + 1);
+            setMoodFor("stunned", 600);
             pushFloat(event.lost > 0 ? `-${fmt(event.lost)} SPILLED!` : "TOPPLED!", event.x, Math.min(70, event.y), "bad");
             const fallen = lastTowerRef.current;
             setDebris(
@@ -274,7 +283,7 @@ export default function SuperStackGame() {
           case "fumble":
             sfx.fumble();
             setShakeId((n) => n + 1);
-            setTunaReact((n) => n + 1);
+            setMoodFor("stunned", 400);
             pushFloat("FUMBLE!", event.x, event.y, "bad");
             vibrate(80);
             break;
@@ -283,6 +292,10 @@ export default function SuperStackGame() {
             break;
           case "lid-spawned":
             sfx.lidIncoming();
+            break;
+          case "lid-incoming":
+            sfx.lidHorn();
+            setHatchFlash((n) => n + 1);
             break;
           case "phase":
             sfx.phaseSlam();
@@ -300,7 +313,7 @@ export default function SuperStackGame() {
       }
       events.length = 0;
     },
-    [pushFloat, pushSlam],
+    [pushFloat, pushSlam, setMoodFor],
   );
 
   const finishRound = useCallback((round: Round) => {
@@ -315,6 +328,7 @@ export default function SuperStackGame() {
       score: round.score,
       banks: round.banks,
       biggestBank: round.biggestBank,
+      biggestLayers: round.biggestBankLayers,
       bestCombo: round.bestCombo,
       fumbles: round.fumbles,
       collapses: round.collapses,
@@ -328,8 +342,6 @@ export default function SuperStackGame() {
     setClaimToken(null);
     setQualified(false);
     qualifiedRef.current = false;
-    setInitialsValue([0, 0, 0]);
-    setInitialSlot(0);
     setCountedScore(0);
     setResultStage("counting");
     setScreen("results");
@@ -347,8 +359,8 @@ export default function SuperStackGame() {
       duration: Math.round(round.elapsed),
     });
 
-    // Send the round. Never blocks the screen — a failure just means no QR and the
-    // score is queued for the next time we have signal.
+    // Send the round. Never blocks the screen — a failure just means no claim QR
+    // this time, and the score is queued for the next moment we have signal.
     void submitPlay({
       score: round.score,
       banks: round.banks,
@@ -537,8 +549,15 @@ export default function SuperStackGame() {
       }
 
       if (event.key === " " || event.key === "Enter") {
-        // The results screen owns Enter while its own sequence is running.
-        if (current === "results" || current === "playing") return;
+        // The results screen owns Enter while its own sequence is running; once it is
+        // done, the one button starts the next round (an event box has no other key).
+        if (current === "playing") return;
+        if (current === "results") {
+          if (resultStageRef.current !== "done") return;
+          event.preventDefault();
+          startGame(false);
+          return;
+        }
         event.preventDefault();
         if (current === "start" || current === "board") {
           goTo("select");
@@ -614,6 +633,29 @@ export default function SuperStackGame() {
     if (roundRef.current) roundRef.current.targetX = null;
   }, []);
 
+  const spinInitial = useCallback(
+    (slot: number, dir: number) => {
+      sfx.uiPress();
+      setInitials((cur) => {
+        const next = [...cur] as [number, number, number];
+        next[slot] = (next[slot] + dir + 26) % 26;
+        return next;
+      });
+    },
+    [],
+  );
+
+  /** Initials hit the shared board the moment they are confirmed. */
+  const confirmInitials = useCallback(() => {
+    if (!lastRun) return;
+    sfx.fanfare();
+    const name = initials.map((i) => String.fromCharCode(65 + i)).join("");
+    if (claimToken) {
+      void pushInitials(claimToken, name).then(() => void refreshBoard());
+    }
+    setResultStage("done");
+  }, [initials, lastRun, claimToken, refreshBoard]);
+
   /** Results sequencing: count the score up, celebrate, then take initials. */
   useEffect(() => {
     if (screen !== "results" || !lastRun || resultStage !== "counting") return;
@@ -644,28 +686,7 @@ export default function SuperStackGame() {
     return () => cancelAnimationFrame(raf);
   }, [screen, resultStage, lastRun, best, topScore, pushSlam]);
 
-  /**
-   * The board is written the moment the player confirms, so their initials are up on
-   * the screen before they have even picked up their phone.
-   */
-  const spinInitial = useCallback((slot: number, dir: number) => {
-    sfx.uiPress();
-    setInitialsValue((current) => {
-      const next = [...current] as [number, number, number];
-      next[slot] = (next[slot] + dir + 26) % 26;
-      return next;
-    });
-  }, []);
-
-  const confirmInitials = useCallback(() => {
-    sfx.fanfare();
-    const text = initials.map((i) => String.fromCharCode(65 + i)).join("");
-    if (claimToken) {
-      void pushInitials(claimToken, text).then(() => void refreshBoard());
-    }
-    setResultStage("done");
-  }, [initials, claimToken, refreshBoard]);
-
+  /** Keyboard entry for the three initials. */
   useEffect(() => {
     if (screen !== "results" || resultStage !== "initials") return;
     const onKey = (event: KeyboardEvent) => {
@@ -676,23 +697,26 @@ export default function SuperStackGame() {
         event.preventDefault();
         spinInitial(initialSlot, -1);
       } else if (event.key === "ArrowLeft") {
+        // A joystick has no up/down, so left/right spin the letter...
         event.preventDefault();
-        setInitialSlot((slot) => Math.max(0, slot - 1));
+        spinInitial(initialSlot, -1);
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        setInitialSlot((slot) => Math.min(2, slot + 1));
+        spinInitial(initialSlot, 1);
       } else if (event.key === "Enter" || event.key === " ") {
+        // ...and the one button moves to the next slot; on the last one it locks in.
         event.preventDefault();
-        confirmInitials();
+        if (initialSlot < 2) setInitialSlot(initialSlot + 1);
+        else confirmInitials();
       } else if (/^[a-zA-Z]$/.test(event.key)) {
         event.preventDefault();
         const code = event.key.toUpperCase().charCodeAt(0) - 65;
-        setInitialsValue((current) => {
-          const next = [...current] as [number, number, number];
+        setInitials((cur) => {
+          const next = [...cur] as [number, number, number];
           next[initialSlot] = code;
           return next;
         });
-        setInitialSlot((slot) => Math.min(2, slot + 1));
+        setInitialSlot((s) => Math.min(2, s + 1));
         sfx.uiPress();
       }
     };
@@ -720,12 +744,13 @@ export default function SuperStackGame() {
   const seconds = Math.ceil(view.timeLeft);
   const urgent = seconds <= 10 && screen === "playing" && countdownDisplay === null;
   const layerCount = view.layers.length;
-  const towerHeat = layerCount >= TOWER.collapseAt - 2 ? "hot" : layerCount >= TOWER.wobbleAt ? "warm" : "";
+  const towerHeat: "calm" | "warm" | "hot" = layerCount >= TOWER.collapseAt - 2 ? "hot" : layerCount >= TOWER.wobbleAt ? "warm" : "calm";
   const lidLive = view.nextKind === "lid" || view.items.some((item) => item.kind === "lid");
   const currentBankValue = bankValue(view.pot, layerCount);
 
   return (
     <main className="super-stack-app">
+      <Scene hatchFlash={hatchFlash} bank={scorePulse} />
       <header className="game-topline" aria-label="Fatsandwich game header">
         <div className="logo-sticker">
           <img src={gameAssets.logo} alt="Fat Sandwich" />
@@ -749,143 +774,26 @@ export default function SuperStackGame() {
       </header>
 
       {screen === "start" && (
-        <section className="screen-overlay start-screen" aria-label="Start screen">
-          <div className="start-center">
-            <img className="stack-icon" src={gameAssets.superStack} alt="Fat Stack" />
-            <h1>
-              STACK IT HIGH.
-              <br />
-              <em>BANK</em> IT BIG.
-            </h1>
-            <p>Catch the good stuff. Grab the lid to bank your points. Don’t let it topple.</p>
-            <button className="red-button big-button" onClick={() => goTo("select")}>
-              {hasPlayed ? "PLAY AGAIN" : "PRESS TO PLAY"}
-            </button>
-            <div className="start-hint">
-              <b>MOVE</b> joystick · arrows · drag <span>•</span> <b>START</b> red button · space
-            </div>
-            <div className="stat-row">
-              <div className="stat-pill">
-                <span>TODAY’S TOP STACK</span>
-                <b>{fmt(topScore)}</b>
-              </div>
-              {best > 0 && (
-                <div className="stat-pill red">
-                  <span>YOUR BEST</span>
-                  <b>{fmt(best)}</b>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+        <StartScreen hasPlayed={hasPlayed} topScore={topScore} best={best} onStart={() => goTo("select")} />
       )}
 
       {screen === "select" && (
-        <section className="screen-overlay select-screen" aria-label="Choose your character">
-          <h2>CHOOSE YOUR STACKER</h2>
-          <div className="char-grid">
-            {CHARACTERS.map((c) => (
-              <button
-                key={c.id}
-                className={`char-card ${c.id === charId ? "picked" : ""}`}
-                onClick={() => {
-                  sfx.uiPress();
-                  setCharId(c.id);
-                  track("character_selected", { character_id: c.id });
-                }}
-              >
-                <img src={c.art} alt={c.name} />
-                <b>{c.name}</b>
-                <span>{c.tag}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            className="red-button big-button"
-            onClick={() => (hasPlayed ? startGame(false) : goTo("how-to"))}
-          >
-            STACK AS {playerChar.name.toUpperCase()}
-          </button>
-        </section>
+        <SelectScreen
+          characters={CHARACTERS}
+          selectedId={charId}
+          onSelect={(id) => {
+            sfx.uiPress();
+            setCharId(id);
+            track("character_selected", { character_id: id });
+          }}
+          onPick={() => (hasPlayed ? startGame(false) : goTo("how-to"))}
+        />
       )}
 
-      {screen === "how-to" && (
-        <section className="screen-overlay tutorial-screen" aria-label="How to play">
-          <h2>HOW TO STACK</h2>
-          <div className="tutorial-grid">
-            <article>
-              <span className="step-num">01</span>
-              <div className="tutorial-items">
-                <Ingredient kind="pastrami" />
-                <Ingredient kind="tomato" />
-                <Ingredient kind="lettuce" />
-              </div>
-              <h3>CATCH</h3>
-              <p>EVERY CATCH FILLS YOUR POT</p>
-            </article>
-            <article>
-              <span className="step-num">02</span>
-              <div className="tutorial-items">
-                <Ingredient kind="lid" />
-              </div>
-              <h3>BANK</h3>
-              <p>THE LID CASHES YOUR POT IN. TALLER = BIGGER BONUS</p>
-            </article>
-            <article>
-              <span className="step-num">03</span>
-              <div className="tutorial-items">
-                <img className="topple-demo" src={gameAssets.ingBase} alt="Tiger crunch base" />
-              </div>
-              <h3>DON’T TOPPLE</h3>
-              <p>{TOWER.collapseAt} LAYERS = CRASH. POT LOST</p>
-            </article>
-            <article>
-              <span className="step-num">04</span>
-              <div className="tutorial-items">
-                <div className="hazard-demo">
-                  <Ingredient kind="sauce" />
-                  <span className="hazard-mark">✕</span>
-                </div>
-              </div>
-              <h3>AVOID</h3>
-              <p>3 SAUCE SPILLS = GAME OVER</p>
-            </article>
-          </div>
-          <button className="red-button big-button" onClick={() => startGame(false)}>
-            PRESS TO START
-          </button>
-        </section>
-      )}
+      {screen === "how-to" && <HowToScreen onStart={() => startGame(false)} />}
 
       {screen === "playing" && (
         <section className="play-screen" aria-label="Live game">
-          <aside className="left-rail">
-            <div className="rail-card score-card">
-              <span>BANKED</span>
-              <b key={scorePulse} className="pulse-on-mount">
-                {fmt(view.score)}
-              </b>
-            </div>
-            <div className="rail-card fumble-card">
-              <span>FUMBLES</span>
-              <div className="fumble-dots">
-                {Array.from({ length: ROUND.maxFumbles }, (_, dot) => (
-                  <i className={dot < view.fumbles ? "used" : ""} key={dot}>
-                    !
-                  </i>
-                ))}
-              </div>
-            </div>
-            <div className="rail-card banks-card">
-              <span>FAT STACKS</span>
-              <b>{view.banks}</b>
-            </div>
-            <div key={`tuna-${tunaReact}`} className={`rail-character ${tunaReact > 0 ? "react-flinch" : ""}`}>
-              <img src={gameAssets.captainTuna} alt="Captain Tuna" />
-              <span>OFFICIAL SCOREKEEPER</span>
-            </div>
-          </aside>
-
           <div
             ref={laneRef}
             key={`lane-${shakeId}`}
@@ -895,16 +803,10 @@ export default function SuperStackGame() {
             onPointerUp={onLanePointerEnd}
             onPointerLeave={onLanePointerEnd}
           >
-            <div className={`big-clock ${urgent ? "urgent" : ""}`}>
-              <b>{seconds.toString().padStart(2, "0")}</b>
-              <i>{view.phaseLabel}</i>
-            </div>
-
-            <div className="catch-line" />
 
             {view.items.map((item) => {
               const spec = ITEMS[item.kind];
-              const proximity = Math.max(0, Math.min(1, (item.y + 10) / (ROUND.catchBottom + 10)));
+              const proximity = Math.max(0, Math.min(1, (item.y + 10) / (TOWER.trayY + 10)));
               return (
                 <div key={item.id} className="item-holder">
                   <div
@@ -930,47 +832,19 @@ export default function SuperStackGame() {
               );
             })}
 
-            {debris.map((piece) => (
-              <div
-                key={piece.id}
-                className="debris"
-                style={{
-                  left: `${view.playerX}%`,
-                  ["--dx" as string]: `${piece.dx}%`,
-                  ["--rot" as string]: `${piece.rot}deg`,
-                }}
-              >
-                <img src={artFor(piece.kind)} alt="" />
-              </div>
-            ))}
-
-            <div className={`stack-on-tray ${towerHeat}`} style={{ left: `${view.playerX}%` }}>
-              {view.pot > 0 && (
-                <div className={`pot-chip ${lidLive ? "lid-live" : ""}`}>
-                  <span>POT</span>
-                  <b>{fmt(view.pot)}</b>
-                  {lidLive && <i>LID = {fmt(currentBankValue)}</i>}
-                </div>
-              )}
-              <div className="tower">
-                <img className="tower-base" src={gameAssets.ingBase} alt="" />
-                {view.layers.map((kind, index) => (
-                  <img
-                    key={`${kind}-${index}`}
-                    className="tower-layer"
-                    src={artFor(kind)}
-                    alt=""
-                    style={{ transform: `rotate(${((index * 37) % 9) - 4}deg)`, zIndex: index + 2 }}
-                  />
-                ))}
-              </div>
-              <img className="player-sprite" src={playerChar.art} alt={playerChar.name} />
-              {layerCount > 0 && (
-                <div className={`height-chip ${towerHeat}`}>
-                  {layerCount}/{TOWER.collapseAt}
-                </div>
-              )}
-            </div>
+            <Player
+              character={playerChar}
+              x={view.playerX}
+              direction={view.direction}
+              layers={view.layers}
+              pot={view.pot}
+              lidLive={lidLive}
+              bankValue={currentBankValue}
+              heat={towerHeat}
+              mood={mood === "idle" && towerHeat === "hot" ? "panic" : mood}
+              moodKey={moodKey}
+              debris={debris}
+            />
 
             <div key={`msg-${view.messageId}`} className={`catch-message tone-${view.messageTone}`}>
               {view.message}
@@ -1019,204 +893,55 @@ export default function SuperStackGame() {
             )}
           </div>
 
-          <aside className="right-rail">
-            <div className="rail-card top-card">
-              <span>TODAY’S TOP</span>
-              <b>{fmt(topScore)}</b>
-            </div>
-            <div
-              className={`next-ticket ${ITEMS[view.nextKind].group === "hazard" ? "danger" : ""} ${view.nextKind === "lid" ? "gold" : ""}`}
-            >
-              <strong>
-                {ITEMS[view.nextKind].group === "hazard" ? "DODGE!" : view.nextKind === "lid" ? "BANK!" : "NEXT UP"}
-              </strong>
-              <div className="next-item">
-                <Ingredient kind={view.nextKind} />
-              </div>
-              <span>{ITEMS[view.nextKind].label}</span>
-            </div>
-            <div className="rail-card combo-card">
-              <span>COMBO</span>
-              <b>x{view.multiplier}</b>
-              <i style={{ height: `${Math.min(100, view.combo * 6)}%` }} />
-            </div>
-            <div key={`mami-${mamiReact}`} className={`rail-character ${mamiReact > 0 ? "react-cheer" : ""}`}>
-              <img src={gameAssets.pastramiMami} alt="Pastrami Mami" />
-              <span>ORDER UP!</span>
-            </div>
-          </aside>
+          <Hud
+            score={view.score}
+            banks={view.banks}
+            fumbles={view.fumbles}
+            seconds={seconds}
+            phaseLabel={view.phaseLabel}
+            urgent={urgent}
+            nextKind={view.nextKind}
+            combo={view.combo}
+            multiplier={view.multiplier}
+            topScore={topScore}
+            scorePulse={scorePulse}
+          />
         </section>
       )}
 
       {screen === "results" && lastRun && (
-        <section className="screen-overlay results-screen" aria-label="Results screen">
-          <div className="result-center">
-            <h2>{resultHeadline(lastRun)}</h2>
-            <div className="score-receipt">
-              <span>YOUR SCORE</span>
-              <b>{fmt(countedScore)}</b>
-              <small>{resultCaption(lastRun)}</small>
-              {resultStage !== "counting" && (
-                <div className="receipt-lines">
-                  <div>
-                    <span>FAT STACKS BANKED</span>
-                    <b>{lastRun.banks}</b>
-                  </div>
-                  <div>
-                    <span>BIGGEST BANK</span>
-                    <b>{fmt(lastRun.biggestBank)}</b>
-                  </div>
-                  <div>
-                    <span>TOPPLES</span>
-                    <b>{lastRun.collapses}</b>
-                  </div>
-                  <div>
-                    <span>POT LEFT UNBANKED</span>
-                    <b>{fmt(lastRun.potLost)}</b>
-                  </div>
-                  {lastRun.bonusSurvived > 0 && (
-                    <div className="bonus-line">
-                      <span>SURVIVED THE RUSH</span>
-                      <b>+{fmt(lastRun.bonusSurvived)}</b>
-                    </div>
-                  )}
-                  {lastRun.bonusClean > 0 && (
-                    <div className="bonus-line">
-                      <span>CLEAN COUNTER</span>
-                      <b>+{fmt(lastRun.bonusClean)}</b>
-                    </div>
-                  )}
-                  {best > 0 && lastRun.score < best && (
-                    <div className="bonus-line delta-line">
-                      <span>YOUR BEST</span>
-                      <b>{fmt(best)}</b>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {resultStage === "initials" && (
-              <div className="initials-entry">
-                <strong>YOU MADE THE BOARD{savedRank ? ` — #${savedRank}` : ""} — SIGN IT</strong>
-                <div className="initials-slots">
-                  {initials.map((letter, slot) => (
-                    <div
-                      key={slot}
-                      className={`initial-slot ${slot === initialSlot ? "active" : ""}`}
-                      onClick={() => setInitialSlot(slot)}
-                    >
-                      <button
-                        className="spin"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setInitialSlot(slot);
-                          spinInitial(slot, 1);
-                        }}
-                      >
-                        ▲
-                      </button>
-                      <b>{String.fromCharCode(65 + letter)}</b>
-                      <button
-                        className="spin"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setInitialSlot(slot);
-                          spinInitial(slot, -1);
-                        }}
-                      >
-                        ▼
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button className="red-button" onClick={confirmInitials}>
-                  LOCK IT IN
-                </button>
+        <ResultsScreen
+          run={lastRun}
+          stage={resultStage}
+          countedScore={countedScore}
+          best={best}
+          initials={initials}
+          initialSlot={initialSlot}
+          savedRank={savedRank}
+          onSlot={setInitialSlot}
+          onSpin={spinInitial}
+          onConfirmInitials={confirmInitials}
+          claimToken={claimToken}
+          onPlayAgain={() => startGame(false)}
+          onBoard={() => goTo("board")}
+          slam={
+            slam && (
+              <div key={slam.id} className={`slam slam-${slam.tone}`}>
+                {slam.text}
               </div>
-            )}
-
-            {resultStage === "done" && claimToken && (
-              <div className="claim-invite">
-                <div className="claim-copy">
-                  <strong>CLAIM YOUR MERCH</strong>
-                  <span>Scan with your phone to collect your prize</span>
-                </div>
-                <QrCode value={claimUrl(claimToken)} size={190} />
-              </div>
-            )}
-
-            {resultStage === "done" && (
-              <div className="merch-note">HIGH SCORE = MERCH · SHOW STAFF YOUR SCORE</div>
-            )}
-            {resultStage === "done" && (
-              <div className="result-actions">
-                {savedRank !== null && <div className="rank-badge">#{savedRank} TODAY</div>}
-                <button className="red-button big-button" onClick={() => startGame(false)}>
-                  PLAY AGAIN
-                </button>
-                <button className="white-button" onClick={() => goTo("board")}>
-                  VIEW BOARD
-                </button>
-              </div>
-            )}
-          </div>
-          {slam && (
-            <div key={slam.id} className={`slam slam-${slam.tone}`}>
-              {slam.text}
-            </div>
-          )}
-        </section>
+            )
+          }
+        />
       )}
 
       {screen === "board" && (
-        <section className="screen-overlay leaderboard-screen" aria-label="High score screen">
-          <div className="board-center">
-            <h2>TODAY’S TOP STACKS</h2>
-            <div className="score-list">
-              {board.length === 0 && <div className="board-empty">NO SCORES YET TODAY — BE FIRST</div>}
-              {board.map((entry, index) => (
-                <div
-                  className={`${index === 0 ? "first" : ""} ${entry.claimed ? "" : "unclaimed"}`}
-                  key={`${entry.rank}-${entry.score}-${index}`}
-                >
-                  <span>
-                    {entry.rank}. {entry.name}
-                  </span>
-                  <b>{fmt(entry.score)}</b>
-                </div>
-              ))}
-            </div>
-            <p>
-              {boardCutoff > 0 ? `SCORE ${fmt(boardCutoff + 1)}+ TO JOIN THE BOARD` : "ANY SCORE JOINS THE BOARD"}
-              {backendConfigured && !boardLive && <em className="board-offline"> · OFFLINE — SHOWING LAST KNOWN</em>}
-            </p>
-            <div className="merch-note">CLAIM YOUR MERCH · SHOW STAFF YOUR SCORE</div>
-            <button className="red-button big-button" onClick={() => goTo("select")}>
-              PLAY
-            </button>
-          </div>
-        </section>
+        <BoardScreen
+          entries={board}
+          cutoff={boardCutoff}
+          offline={backendConfigured && !boardLive}
+          onPlay={() => goTo("select")}
+        />
       )}
     </main>
   );
-}
-
-function resultHeadline(run: RunSummary) {
-  if (run.banks >= 4) return "FAT STACK LEGEND!";
-  if (run.banks >= 2) return "THAT’S A FAT STACK!";
-  if (run.banks === 1) return "FIRST BANK IN!";
-  if (run.score >= 15000) return "SOLID STACKING!";
-  if (run.score === 0) return "NOTHING ON THE BREAD.";
-  return "DECENT SANDWICH.";
-}
-
-function resultCaption(run: RunSummary) {
-  if (run.score === 0) return "YOU CAUGHT NOTHING. HAVE ANOTHER GO.";
-  if (run.reason === "fumbles") return `${run.fumbles} SAUCE SPILLS. THE COUNTER WON THAT ONE.`;
-  if (run.potLost > run.score / 2) return `${fmt(run.potLost)} POINTS NEVER REACHED THE BANK. GRAB THE LID!`;
-  if (run.fumbles === 0 && run.collapses === 0) return "CLEAN ROUND. NOTHING SPILLED, NOTHING TOPPLED.";
-  if (run.collapses > 0) return `${run.collapses} TOPPLE${run.collapses > 1 ? "S" : ""}. BANK BEFORE IT FALLS.`;
-  if (run.fumbles > 0) return `${run.fumbles} FUMBLE${run.fumbles > 1 ? "S" : ""}. STILL TASTY.`;
-  return "NO FUMBLES. NICE.";
 }

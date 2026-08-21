@@ -81,14 +81,18 @@ export const ROUND = {
   playerSpeed: 78,
   /** How wide the player's catching area is, either side of centre. Bigger = easier. */
   playerHalfWidth: 8,
-  /** The band where a catch registers. */
-  catchTop: 76,
-  catchBottom: 90,
+  /** The truck hatch, in grid units (x). Everything falls out of it. */
+  hatch: { left: 22, right: 78 },
   /** Items above this line have left the screen. */
   despawnY: 106,
-  spawnY: -10,
-  /** Items never spawn closer than this to the lane edges. */
-  spawnMargin: 9,
+  /** Items appear at the top of the hatch, not above the screen. */
+  spawnY: 28,
+  /**
+   * The fall used to be 94 grid units (−10 → 84); out of the hatch it is 51. This scales
+   * every fall speed so the TIME to reach the tray is unchanged — the balance sheet above
+   * still means what it says.
+   */
+  fallScale: 51 / 94,
   /** Never allow more than this many items on screen at once. */
   maxItems: 12,
 };
@@ -120,6 +124,10 @@ export const TOWER = {
   lidIntervalMax: 4,
   /** ...tightened by this many seconds per layer above the minimum (mercy for deep stacks). */
   lidMercyPerLayer: 0.3,
+  /** Where the tray sits on the 0–100 grid (y). The catch point starts here... */
+  trayY: 79,
+  /** ...and rises this many grid units per layer. A tall tower catches earlier. */
+  layerUnits: 1.9,
   /** Banking pays the pot PLUS layers² × this. Quadratic: one 10-stack beats two 5-stacks. */
   bankBonusPerLayerSquared: 80,
 };

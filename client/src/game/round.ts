@@ -44,6 +44,7 @@ export type GameEvent =
   | { type: "fumble"; x: number; y: number }
   | { type: "drop" }
   | { type: "lid-spawned" }
+  | { type: "lid-incoming" }
   | { type: "phase"; label: string }
   | { type: "bank-it" }
   | { type: "tick"; urgent: boolean };
@@ -80,6 +81,8 @@ export type Round = {
 
   banks: number;
   biggestBank: number;
+  /** The layers of the biggest banked sandwich — drawn as the hero on the results screen. */
+  biggestBankLayers: ItemKind[];
   caught: number;
   dropped: number;
   spawned: number;
@@ -95,6 +98,8 @@ export type Round = {
   lastTickSecond: number;
   phaseLabel: string;
   saidBankIt: boolean;
+  /** True once the one-second lid warning has fired for the current lid timer. */
+  lidWarned: boolean;
 
   /** Spawn fairness state. */
   lastWasHazard: boolean;
@@ -131,6 +136,7 @@ function scheduleLid(round: Round) {
   const base = TOWER.lidIntervalMin + round.random() * spread;
   const mercy = Math.max(0, round.tower.length - TOWER.lidMinLayers) * TOWER.lidMercyPerLayer;
   round.nextLidAt = round.elapsed + Math.max(2.5, base - mercy);
+  round.lidWarned = false;
 }
 
 /**
@@ -174,6 +180,7 @@ export function createRound(random: () => number = Math.random): Round {
     fumbles: 0,
     banks: 0,
     biggestBank: 0,
+    biggestBankLayers: [],
     caught: 0,
     dropped: 0,
     spawned: 0,
@@ -187,6 +194,7 @@ export function createRound(random: () => number = Math.random): Round {
     lastTickSecond: ROUND.seconds,
     phaseLabel: PHASES[0].label,
     saidBankIt: false,
+    lidWarned: false,
     lastWasHazard: false,
     spawnsSinceProtein: 0,
     nextKind: "turkey",
@@ -217,9 +225,9 @@ function spawn(round: Round, kind: ItemKind, speedScale: number) {
   round.items.push({
     id: round.itemId,
     kind,
-    x: ROUND.spawnMargin + round.random() * (100 - ROUND.spawnMargin * 2),
+    x: ROUND.hatch.left + round.random() * (ROUND.hatch.right - ROUND.hatch.left),
     y: ROUND.spawnY,
-    speed: spec.fallSpeed * speedScale * (0.92 + round.random() * 0.16),
+    speed: spec.fallSpeed * ROUND.fallScale * speedScale * (0.92 + round.random() * 0.16),
     tilt: Math.round(round.random() * 24 - 12),
   });
 
@@ -249,6 +257,7 @@ function handleCatch(round: Round, item: FallingItem) {
     const amount = bankValue(round.pot, round.tower.length);
     round.score += amount;
     round.banks += 1;
+    if (amount >= round.biggestBank) round.biggestBankLayers = [...round.tower];
     round.biggestBank = Math.max(round.biggestBank, amount);
     round.caught += 1;
     round.combo += 1;
@@ -314,6 +323,20 @@ function handleMiss(round: Round, item: FallingItem) {
   round.events.push({ type: "drop" });
 }
 
+/** Where the top of the tower is right now — the catch point. */
+export function catchY(round: Round) {
+  return TOWER.trayY - round.tower.length * TOWER.layerUnits;
+}
+
+/**
+ * The band where a catch registers, following the top of the tower. Sized in grid units
+ * but scaled with the fall speed, so it is the same fraction of a SECOND as it always was.
+ */
+export function catchBand(round: Round) {
+  const y = catchY(round);
+  return { top: y - 8 * ROUND.fallScale, bottom: y + 6 * ROUND.fallScale };
+}
+
 /** How wide the player's catching area is for a given item. */
 export function catchReach(kind: ItemKind) {
   return ROUND.playerHalfWidth + ITEMS[kind].size * 2.5;
@@ -343,6 +366,12 @@ export function stepRound(round: Round, dt: number) {
     say(round, "BANK IT!", "big");
   }
 
+  // Heads-up: the lid drops in about a second. The hatch glows and the horn sounds.
+  if (!round.lidWarned && round.tower.length >= TOWER.lidMinLayers && round.elapsed >= round.nextLidAt - 1) {
+    round.lidWarned = true;
+    round.events.push({ type: "lid-incoming" });
+  }
+
   // Movement — distance per second, so speed never depends on the monitor.
   if (round.targetX !== null) {
     const dx = round.targetX - round.playerX;
@@ -365,7 +394,9 @@ export function stepRound(round: Round, dt: number) {
   for (const item of round.items) {
     item.y += item.speed * dt;
 
-    const inBand = item.y >= ROUND.catchTop && item.y <= ROUND.catchBottom;
+    // Recomputed per item: a catch grows the tower, which moves the band for the next one.
+    const band = catchBand(round);
+    const inBand = item.y >= band.top && item.y <= band.bottom;
     if (inBand && Math.abs(item.x - round.playerX) < catchReach(item.kind)) {
       handleCatch(round, item);
       continue;
@@ -401,7 +432,7 @@ export function autoDirection(round: Round): number {
   // Dodge first: anything nasty about to land on us.
   for (const item of round.items) {
     if (ITEMS[item.kind].group !== "hazard") continue;
-    const timeToBand = (ROUND.catchTop - item.y) / item.speed;
+    const timeToBand = (catchBand(round).top - item.y) / item.speed;
     if (timeToBand > 0.55 || timeToBand < -0.2) continue;
     if (Math.abs(item.x - round.playerX) < catchReach(item.kind) + 3) {
       return item.x > round.playerX ? -1 : 1;
@@ -413,7 +444,7 @@ export function autoDirection(round: Round): number {
   for (const item of round.items) {
     const spec = ITEMS[item.kind];
     if (spec.group === "hazard") continue;
-    const timeToFloor = (ROUND.catchBottom - item.y) / item.speed;
+    const timeToFloor = (catchBand(round).bottom - item.y) / item.speed;
     if (timeToFloor < 0) continue;
     const travel = Math.abs(item.x - round.playerX) / ROUND.playerSpeed;
     if (travel > timeToFloor + 0.1) continue;

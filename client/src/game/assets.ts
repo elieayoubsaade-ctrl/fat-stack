@@ -2,8 +2,8 @@
  * Every image the game loads at runtime.
  *
  * Ingredients are the approved 12-render package, trimmed and sized for play
- * (full-resolution masters live in `design-references/approved-renders/`). Characters are
- * the clean transparent cut-outs from the brand library.
+ * (full-resolution masters live in `design-references/approved-renders/`). Characters live in
+ * `characters.ts`.
  *
  * Paths are built from Vite's BASE_URL so the game works whether it is served from the
  * root of a domain or from a sub-path.
@@ -11,11 +11,7 @@
 const base = import.meta.env.BASE_URL;
 
 export const gameAssets = {
-  logo: `${base}assets/fatsandwich-logo-purple-burst.jpeg`,
-  player: `${base}assets/the-fat-sandwich-player.png`,
-  pastramiMami: `${base}assets/pastrami-mami-host.png`,
-  captainTuna: `${base}assets/captain-tuna-scorekeeper.png`,
-  superStack: `${base}assets/super-stack-icon.png`,
+  logo: `${base}assets/logo.png`,
 
   // The approved ingredient renders.
   ingTurkey: `${base}assets/ing/turkey.png`,
