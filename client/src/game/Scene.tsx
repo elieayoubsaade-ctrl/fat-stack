@@ -28,7 +28,7 @@ function wireY(xPct: number, sag: number, lift: number) {
   return lift + sag * 4 * t * (1 - t);
 }
 
-const DOTS = Array.from({ length: 15 }, (_, i) => ({ cx: 256 + (i % 5) * 32, cy: 226 + Math.floor(i / 5) * 24 }));
+const DOTS = Array.from({ length: 15 }, (_, i) => ({ cx: 254 + (i % 5) * 26, cy: 178 + Math.floor(i / 5) * 17 }));
 
 const BURST =
   "M640,230 L658,262 L696,246 L690,286 L730,292 L704,318 L732,346 L694,350 L698,392 L662,372 L644,408 L628,372 L590,392 L596,350 L556,346 L584,318 L558,292 L598,286 L592,246 L630,262 Z";
@@ -56,55 +56,55 @@ export default function Scene({ hatchFlash = 0, bank = 0 }: { hatchFlash?: numbe
         ))}
       </svg>
 
-      <svg className="kiosk" viewBox="0 0 1000 340" preserveAspectRatio="xMidYMin meet">
+      <svg className="kiosk" viewBox="0 0 1000 250" preserveAspectRatio="xMidYMin meet">
         <defs>
           <linearGradient id="kiosk-inner" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#0b0212" />
             <stop offset="1" stopColor="#2a0b3d" />
           </linearGradient>
-          <filter id="kiosk-shadow" x="-5%" y="-5%" width="110%" height="125%">
-            <feDropShadow dx="0" dy="10" stdDeviation="8" floodColor="#000" floodOpacity="0.5" />
+          <filter id="kiosk-shadow" x="-5%" y="-5%" width="110%" height="130%">
+            <feDropShadow dx="0" dy="8" stdDeviation="7" floodColor="#000" floodOpacity="0.5" />
           </filter>
         </defs>
 
         {/* Roof marquee */}
         <g>
-          <rect x="330" y="4" width="340" height="40" rx="8" fill="var(--ink)" />
-          <rect x="336" y="10" width="328" height="28" rx="5" fill="#fff4e3" />
-          <text x="500" y="32" textAnchor="middle" fontSize="22" fill="var(--purple-deep)" letterSpacing="2">
+          <rect x="340" y="2" width="320" height="34" rx="7" fill="var(--ink)" />
+          <rect x="345" y="7" width="310" height="24" rx="4" fill="#fff4e3" />
+          <text x="500" y="26" textAnchor="middle" fontSize="19" fill="var(--purple-deep)" letterSpacing="2">
             MOTB · WINTER 2027
           </text>
-          <rect x="478" y="44" width="10" height="16" fill="var(--ink)" />
-          <rect x="512" y="44" width="10" height="16" fill="var(--ink)" />
+          <rect x="482" y="36" width="8" height="12" fill="var(--ink)" />
+          <rect x="510" y="36" width="8" height="12" fill="var(--ink)" />
         </g>
 
         {/* Body */}
         <g filter="url(#kiosk-shadow)">
-          <rect x="110" y="58" width="780" height="272" rx="8" fill="var(--orange)" stroke="var(--ink)" strokeWidth="6" />
-          <rect x="113" y="312" width="774" height="15" fill="#c9520f" />
+          <rect x="110" y="46" width="780" height="200" rx="7" fill="var(--orange)" stroke="var(--ink)" strokeWidth="5" />
+          <rect x="113" y="232" width="774" height="12" fill="#c9520f" />
         </g>
 
         {/* Logo */}
-        <text x="500" y="104" textAnchor="middle" fontSize="46" fill="var(--red)" stroke="var(--ink)" strokeWidth="5" paintOrder="stroke" letterSpacing="3">
+        <text x="500" y="84" textAnchor="middle" fontSize="36" fill="var(--red)" stroke="var(--ink)" strokeWidth="4" paintOrder="stroke" letterSpacing="3">
           FAT SANDWICH
         </text>
 
         {/* Hatch — the purple recessed panel. Everything falls out of here. */}
-        <rect x={hatchLeft} y="118" width={hatchWidth} height="180" rx="5" fill="url(#kiosk-inner)" stroke="var(--ink)" strokeWidth="5" />
-        <rect x={hatchLeft + 10} y="128" width={hatchWidth - 20} height="162" fill="var(--purple-mid)" />
-        <rect key={`glow-${hatchFlash}`} className={`hatch-glow ${hatchFlash > 0 ? "on" : ""}`} x={hatchLeft + 10} y="128" width={hatchWidth - 20} height="162" fill="var(--gold)" />
+        <rect x={hatchLeft} y="96" width={hatchWidth} height="126" rx="4" fill="url(#kiosk-inner)" stroke="var(--ink)" strokeWidth="4" />
+        <rect x={hatchLeft + 8} y="104" width={hatchWidth - 16} height="112" fill="var(--purple-mid)" />
+        <rect key={`glow-${hatchFlash}`} className={`hatch-glow ${hatchFlash > 0 ? "on" : ""}`} x={hatchLeft + 8} y="104" width={hatchWidth - 16} height="112" fill="var(--gold)" />
 
         {/* Service window */}
-        <rect x="246" y="140" width="170" height="68" rx="3" fill="#0a0510" stroke="var(--ink)" strokeWidth="6" />
-        <rect x="254" y="148" width="154" height="7" fill="#3a2650" />
+        <rect x="244" y="114" width="130" height="50" rx="3" fill="#0a0510" stroke="var(--ink)" strokeWidth="5" />
+        <rect x="251" y="121" width="116" height="5" fill="#3a2650" />
 
         {/* Red dots */}
         {DOTS.map((d, i) => (
-          <circle key={i} cx={d.cx} cy={d.cy} r="8" fill="var(--red)" />
+          <circle key={i} cx={d.cx} cy={d.cy} r="6" fill="var(--red)" />
         ))}
 
         {/* Burst */}
-        <path d={BURST} fill="var(--red)" stroke="#9a0f0f" strokeWidth="3" transform="translate(250,40) scale(0.62)" />
+        <path d={BURST} fill="var(--red)" stroke="#9a0f0f" strokeWidth="3" transform="translate(330,30) scale(0.46)" />
       </svg>
 
       <svg className="crowd" viewBox="0 0 1000 100" preserveAspectRatio="none">

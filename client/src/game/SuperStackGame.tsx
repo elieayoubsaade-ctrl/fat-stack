@@ -8,6 +8,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gameAssets } from "./assets";
 import Scene from "./Scene";
+import Player, { type PlayerMood } from "./Player";
+import Hud from "./Hud";
 import Ingredient, { artFor } from "./Ingredient";
 import { isMuted, primeAudio, setMuted, setMusicIntensity, sfx, startMusic, stopMusic } from "./audio";
 import { CHARACTERS, characterById } from "./characters";
@@ -41,6 +43,7 @@ type View = {
   banks: number;
   timeLeft: number;
   phaseLabel: string;
+  direction: number;
   message: string;
   messageTone: string;
   messageId: number;
@@ -120,6 +123,7 @@ function toView(round: Round): View {
     banks: round.banks,
     timeLeft: round.timeLeft,
     phaseLabel: round.phaseLabel,
+    direction: round.direction,
     message: round.message,
     messageTone: round.messageTone,
     messageId: round.messageId,
@@ -153,10 +157,11 @@ export default function SuperStackGame() {
   const [floats, setFloats] = useState<FloatText[]>([]);
   const [debris, setDebris] = useState<Debris[]>([]);
   const [shakeId, setShakeId] = useState(0);
-  const [tunaReact, setTunaReact] = useState(0);
-  const [mamiReact, setMamiReact] = useState(0);
   const [scorePulse, setScorePulse] = useState(0);
   const [hatchFlash, setHatchFlash] = useState(0);
+  const [mood, setMood] = useState<PlayerMood>("idle");
+  const [moodKey, setMoodKey] = useState(0);
+  const moodTimer = useRef(0);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [charId, setCharId] = useState<string>(() => {
     try {
@@ -227,6 +232,14 @@ export default function SuperStackGame() {
     window.setTimeout(() => setFloats((current) => current.filter((f) => f.id !== id)), 1000);
   }, []);
 
+  /** Show a mood for a moment, then settle back to idle (or panic, if the tower is tall). */
+  const setMoodFor = useCallback((next: PlayerMood, ms: number) => {
+    window.clearTimeout(moodTimer.current);
+    setMood(next);
+    setMoodKey((n) => n + 1);
+    moodTimer.current = window.setTimeout(() => setMood("idle"), ms);
+  }, []);
+
   /** Turn one frame's worth of round events into sound, floats, shakes and reactions. */
   const drainEvents = useCallback(
     (events: GameEvent[]) => {
@@ -236,6 +249,7 @@ export default function SuperStackGame() {
             if (event.group === "protein") sfx.catchProtein(event.combo);
             else sfx.catchTopping(event.combo);
             pushFloat(`+${fmt(event.amount)}`, event.x, event.y, event.group);
+            setMoodFor("catch", 180);
             vibrate(20);
             break;
           case "combo-up":
@@ -245,13 +259,13 @@ export default function SuperStackGame() {
             sfx.bank(event.layers);
             pushFloat(`+${fmt(event.amount)} BANKED!`, event.x, Math.min(70, event.y), "bank");
             setScorePulse((n) => n + 1);
-            setMamiReact((n) => n + 1);
+            setMoodFor("cheer", 500);
             vibrate([40, 40, 40]);
             break;
           case "collapse": {
             sfx.collapse();
             setShakeId((n) => n + 1);
-            setTunaReact((n) => n + 1);
+            setMoodFor("stunned", 600);
             pushFloat(event.lost > 0 ? `-${fmt(event.lost)} SPILLED!` : "TOPPLED!", event.x, Math.min(70, event.y), "bad");
             const fallen = lastTowerRef.current;
             setDebris(
@@ -267,7 +281,7 @@ export default function SuperStackGame() {
           case "fumble":
             sfx.fumble();
             setShakeId((n) => n + 1);
-            setTunaReact((n) => n + 1);
+            setMoodFor("stunned", 400);
             pushFloat("FUMBLE!", event.x, event.y, "bad");
             vibrate(80);
             break;
@@ -297,7 +311,7 @@ export default function SuperStackGame() {
       }
       events.length = 0;
     },
-    [pushFloat, pushSlam],
+    [pushFloat, pushSlam, setMoodFor],
   );
 
   const finishRound = useCallback((round: Round) => {
@@ -676,7 +690,7 @@ export default function SuperStackGame() {
   const seconds = Math.ceil(view.timeLeft);
   const urgent = seconds <= 10 && screen === "playing" && countdownDisplay === null;
   const layerCount = view.layers.length;
-  const towerHeat = layerCount >= TOWER.collapseAt - 2 ? "hot" : layerCount >= TOWER.wobbleAt ? "warm" : "";
+  const towerHeat: "calm" | "warm" | "hot" = layerCount >= TOWER.collapseAt - 2 ? "hot" : layerCount >= TOWER.wobbleAt ? "warm" : "calm";
   const lidLive = view.nextKind === "lid" || view.items.some((item) => item.kind === "lid");
   const currentBankValue = bankValue(view.pot, layerCount);
 
@@ -815,33 +829,6 @@ export default function SuperStackGame() {
 
       {screen === "playing" && (
         <section className="play-screen" aria-label="Live game">
-          <aside className="left-rail">
-            <div className="rail-card score-card">
-              <span>BANKED</span>
-              <b key={scorePulse} className="pulse-on-mount">
-                {fmt(view.score)}
-              </b>
-            </div>
-            <div className="rail-card fumble-card">
-              <span>FUMBLES</span>
-              <div className="fumble-dots">
-                {Array.from({ length: ROUND.maxFumbles }, (_, dot) => (
-                  <i className={dot < view.fumbles ? "used" : ""} key={dot}>
-                    !
-                  </i>
-                ))}
-              </div>
-            </div>
-            <div className="rail-card banks-card">
-              <span>FAT STACKS</span>
-              <b>{view.banks}</b>
-            </div>
-            <div key={`tuna-${tunaReact}`} className={`rail-character ${tunaReact > 0 ? "react-flinch" : ""}`}>
-              <img src={gameAssets.captainTuna} alt="Captain Tuna" />
-              <span>OFFICIAL SCOREKEEPER</span>
-            </div>
-          </aside>
-
           <div
             ref={laneRef}
             key={`lane-${shakeId}`}
@@ -851,12 +838,6 @@ export default function SuperStackGame() {
             onPointerUp={onLanePointerEnd}
             onPointerLeave={onLanePointerEnd}
           >
-            <div className={`big-clock ${urgent ? "urgent" : ""}`}>
-              <b>{seconds.toString().padStart(2, "0")}</b>
-              <i>{view.phaseLabel}</i>
-            </div>
-
-            <div className="catch-line" />
 
             {view.items.map((item) => {
               const spec = ITEMS[item.kind];
@@ -886,47 +867,19 @@ export default function SuperStackGame() {
               );
             })}
 
-            {debris.map((piece) => (
-              <div
-                key={piece.id}
-                className="debris"
-                style={{
-                  left: `${view.playerX}%`,
-                  ["--dx" as string]: `${piece.dx}%`,
-                  ["--rot" as string]: `${piece.rot}deg`,
-                }}
-              >
-                <img src={artFor(piece.kind)} alt="" />
-              </div>
-            ))}
-
-            <div className={`stack-on-tray ${towerHeat}`} style={{ left: `${view.playerX}%` }}>
-              {view.pot > 0 && (
-                <div className={`pot-chip ${lidLive ? "lid-live" : ""}`}>
-                  <span>POT</span>
-                  <b>{fmt(view.pot)}</b>
-                  {lidLive && <i>LID = {fmt(currentBankValue)}</i>}
-                </div>
-              )}
-              <div className="tower">
-                <img className="tower-base" src={gameAssets.ingBase} alt="" />
-                {view.layers.map((kind, index) => (
-                  <img
-                    key={`${kind}-${index}`}
-                    className="tower-layer"
-                    src={artFor(kind)}
-                    alt=""
-                    style={{ transform: `rotate(${((index * 37) % 9) - 4}deg)`, zIndex: index + 2 }}
-                  />
-                ))}
-              </div>
-              <img className="player-sprite" src={playerChar.art} alt={playerChar.name} />
-              {layerCount > 0 && (
-                <div className={`height-chip ${towerHeat}`}>
-                  {layerCount}/{TOWER.collapseAt}
-                </div>
-              )}
-            </div>
+            <Player
+              character={playerChar}
+              x={view.playerX}
+              direction={view.direction}
+              layers={view.layers}
+              pot={view.pot}
+              lidLive={lidLive}
+              bankValue={currentBankValue}
+              heat={towerHeat}
+              mood={mood === "idle" && towerHeat === "hot" ? "panic" : mood}
+              moodKey={moodKey}
+              debris={debris}
+            />
 
             <div key={`msg-${view.messageId}`} className={`catch-message tone-${view.messageTone}`}>
               {view.message}
@@ -975,32 +928,19 @@ export default function SuperStackGame() {
             )}
           </div>
 
-          <aside className="right-rail">
-            <div className="rail-card top-card">
-              <span>TODAY’S TOP</span>
-              <b>{fmt(topScore)}</b>
-            </div>
-            <div
-              className={`next-ticket ${ITEMS[view.nextKind].group === "hazard" ? "danger" : ""} ${view.nextKind === "lid" ? "gold" : ""}`}
-            >
-              <strong>
-                {ITEMS[view.nextKind].group === "hazard" ? "DODGE!" : view.nextKind === "lid" ? "BANK!" : "NEXT UP"}
-              </strong>
-              <div className="next-item">
-                <Ingredient kind={view.nextKind} />
-              </div>
-              <span>{ITEMS[view.nextKind].label}</span>
-            </div>
-            <div className="rail-card combo-card">
-              <span>COMBO</span>
-              <b>x{view.multiplier}</b>
-              <i style={{ height: `${Math.min(100, view.combo * 6)}%` }} />
-            </div>
-            <div key={`mami-${mamiReact}`} className={`rail-character ${mamiReact > 0 ? "react-cheer" : ""}`}>
-              <img src={gameAssets.pastramiMami} alt="Pastrami Mami" />
-              <span>ORDER UP!</span>
-            </div>
-          </aside>
+          <Hud
+            score={view.score}
+            banks={view.banks}
+            fumbles={view.fumbles}
+            seconds={seconds}
+            phaseLabel={view.phaseLabel}
+            urgent={urgent}
+            nextKind={view.nextKind}
+            combo={view.combo}
+            multiplier={view.multiplier}
+            topScore={topScore}
+            scorePulse={scorePulse}
+          />
         </section>
       )}
 

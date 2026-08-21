@@ -17,8 +17,8 @@ describe("catch geometry", () => {
     round.tower = ["turkey", "lettuce", "tomato"];
     expect(catchY(round)).toBeCloseTo(TOWER.trayY - 3 * TOWER.layerUnits);
     const band = catchBand(round);
-    expect(band.top).toBeCloseTo(catchY(round) - 8);
-    expect(band.bottom).toBeCloseTo(catchY(round) + 6);
+    expect(band.top).toBeCloseTo(catchY(round) - 8 * ROUND.fallScale);
+    expect(band.bottom).toBeCloseTo(catchY(round) + 6 * ROUND.fallScale);
   });
 });
 

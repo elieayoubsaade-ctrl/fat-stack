@@ -1,0 +1,144 @@
+/* The player: character, tray, tower. Sits on the boardwalk, moves with translateX only. */
+/* `.player` is centred on playerX — that is where the TRAY is. The character stands just
+   to the left of it, holding the tray out to one side, so the sandwich never hides them. */
+.player {
+  position: absolute;
+  bottom: 8%;
+  height: 34%;
+  width: clamp(160px, 26vh, 320px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+.player-body {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -62%;
+  right: 10%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  transform-origin: bottom center;
+  transform: rotate(var(--lean, 0deg));
+  transition: transform 120ms var(--ease-out);
+}
+.player-art {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 0 rgba(0, 0, 0, 0.35));
+}
+.mood-catch .player-art { animation: squash 180ms var(--ease-out); }
+.mood-cheer .player-art { animation: hop 420ms var(--ease-pop); }
+.mood-panic .player-art { animation: shake 160ms linear infinite; }
+.mood-stunned .player-art { animation: stunned 600ms var(--ease-out); }
+@keyframes squash { 30% { transform: scale(1.08, 0.92); } 70% { transform: scale(0.96, 1.05); } }
+@keyframes hop { 35% { transform: translateY(-18px) rotate(-3deg) scale(1.05); } 70% { transform: translateY(0) rotate(2deg); } }
+@keyframes shake { 0%, 100% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+@keyframes stunned { 20% { transform: rotate(-12deg); } 55% { transform: rotate(8deg); } }
+
+.sweat {
+  position: absolute;
+  top: 8%;
+  right: 12%;
+  width: 14px;
+  height: 20px;
+  background: #9fd8ff;
+  border: 3px solid var(--ink);
+  border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
+  animation: sweat-drop 0.6s ease-in infinite;
+}
+@keyframes sweat-drop { to { transform: translateY(26px); opacity: 0; } }
+
+/* The tray sits at the character's hands; the tower grows up from it. */
+.tray {
+  position: absolute;
+  left: 50%;
+  width: clamp(110px, 16vh, 190px);
+  transform: translateX(-50%);
+  z-index: 3;
+}
+.tray-art {
+  position: absolute;
+  left: 50%;
+  bottom: -3%;
+  width: 118%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3));
+}
+.tower {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  width: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  transform-origin: bottom center;
+}
+.tower.heat-warm { animation: sway 1.1s ease-in-out infinite; }
+.tower.heat-hot { animation: sway 0.55s ease-in-out infinite; }
+@keyframes sway {
+  0%, 100% { transform: translateX(-50%) rotate(calc(var(--wobble, 1) * -1.1deg)); }
+  50% { transform: translateX(-50%) rotate(calc(var(--wobble, 1) * 1.1deg)); }
+}
+.tower-base { width: 100%; position: relative; z-index: 1; }
+.tower-layer {
+  position: relative;
+  width: 90%;
+  height: var(--layer-px);
+  object-fit: cover;
+  object-position: center 42%;
+  border-radius: 40% / 90%;
+  margin-bottom: calc(var(--layer-px) * -0.28);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+.tower-base + .tower-layer { margin-bottom: calc(clamp(110px, 16vh, 190px) * -0.3); }
+
+.pot-chip {
+  position: absolute;
+  right: 104%;
+  text-align: center;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  padding: 3px 12px;
+  white-space: nowrap;
+  box-shadow: 3px 3px 0 var(--ink);
+  z-index: 6;
+}
+.pot-chip span { font: 800 clamp(9px, 1.3vh, 11px) var(--font-ui); color: var(--purple-deep); margin-right: 6px; letter-spacing: 1px; }
+.pot-chip b { font: 400 clamp(18px, 3vh, 30px) var(--font-display); color: var(--purple); letter-spacing: 1px; }
+.pot-chip i { display: block; font: 800 clamp(9px, 1.4vh, 12px) var(--font-ui); color: var(--ink); background: var(--gold); border-radius: 4px; margin-top: 2px; padding: 1px 6px; }
+.pot-chip.lid-live { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold), 3px 3px 0 var(--ink); }
+
+.height-chip {
+  position: absolute;
+  left: 104%;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font: 400 clamp(14px, 2.4vh, 22px) var(--font-display);
+  color: var(--purple-deep);
+  box-shadow: 3px 3px 0 var(--ink);
+  z-index: 6;
+}
+.height-chip.heat-warm { background: var(--yellow); }
+.height-chip.heat-hot { background: var(--red); color: #fff; animation: pulse-red 0.5s steps(2, end) infinite; }
+@keyframes pulse-red { 50% { transform: scale(1.08); } }
+
+.debris {
+  position: absolute;
+  bottom: 40%;
+  left: 50%;
+  z-index: 4;
+  width: clamp(40px, 6vh, 64px);
+  height: clamp(40px, 6vh, 64px);
+  animation: debris-fly 700ms var(--ease-out) forwards;
+}
+.debris img { width: 100%; height: 100%; object-fit: contain; }
+@keyframes debris-fly { to { transform: translate(var(--dx), 42vh) rotate(var(--rot)); opacity: 0; } }

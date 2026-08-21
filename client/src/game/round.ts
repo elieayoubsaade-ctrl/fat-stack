@@ -224,7 +224,7 @@ function spawn(round: Round, kind: ItemKind, speedScale: number) {
     kind,
     x: ROUND.hatch.left + round.random() * (ROUND.hatch.right - ROUND.hatch.left),
     y: ROUND.spawnY,
-    speed: spec.fallSpeed * speedScale * (0.92 + round.random() * 0.16),
+    speed: spec.fallSpeed * ROUND.fallScale * speedScale * (0.92 + round.random() * 0.16),
     tilt: Math.round(round.random() * 24 - 12),
   });
 
@@ -324,10 +324,13 @@ export function catchY(round: Round) {
   return TOWER.trayY - round.tower.length * TOWER.layerUnits;
 }
 
-/** The band where a catch registers, following the top of the tower. */
+/**
+ * The band where a catch registers, following the top of the tower. Sized in grid units
+ * but scaled with the fall speed, so it is the same fraction of a SECOND as it always was.
+ */
 export function catchBand(round: Round) {
   const y = catchY(round);
-  return { top: y - 8, bottom: y + 6 };
+  return { top: y - 8 * ROUND.fallScale, bottom: y + 6 * ROUND.fallScale };
 }
 
 /** How wide the player's catching area is for a given item. */
