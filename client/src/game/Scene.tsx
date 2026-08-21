@@ -10,6 +10,7 @@
  *
  * `hatchFlash` and `bank` are counters: each increment replays an animation.
  */
+import { gameAssets } from "./assets";
 import { ROUND } from "./config";
 
 /** Fixed star field — no randomness in render, so the sky never shimmers on re-render. */
@@ -152,30 +153,9 @@ export default function Scene({
           </filter>
         </defs>
 
-        {/* Roof marquee */}
-        <g>
-          <rect
-            x="340"
-            y="2"
-            width="320"
-            height="34"
-            rx="7"
-            fill="var(--ink)"
-          />
-          <rect x="345" y="7" width="310" height="24" rx="4" fill="#fff4e3" />
-          <text
-            x="500"
-            y="26"
-            textAnchor="middle"
-            fontSize="19"
-            fill="var(--purple-deep)"
-            letterSpacing="2"
-          >
-            MOTB · WINTER 2027
-          </text>
-          <rect x="482" y="36" width="8" height="12" fill="var(--ink)" />
-          <rect x="510" y="36" width="8" height="12" fill="var(--ink)" />
-        </g>
+        {/* Roof marquee posts — the board itself is HTML (see .marquee) so the web font lays out properly */}
+        <rect x="482" y="30" width="8" height="18" fill="var(--ink)" />
+        <rect x="510" y="30" width="8" height="18" fill="var(--ink)" />
 
         {/* Body */}
         <g filter="url(#kiosk-shadow)">
@@ -192,20 +172,8 @@ export default function Scene({
           <rect x="113" y="232" width="774" height="12" fill="#c9520f" />
         </g>
 
-        {/* Logo */}
-        <text
-          x="500"
-          y="84"
-          textAnchor="middle"
-          fontSize="36"
-          fill="var(--red)"
-          stroke="var(--ink)"
-          strokeWidth="4"
-          paintOrder="stroke"
-          letterSpacing="3"
-        >
-          FAT SANDWICH
-        </text>
+        {/* The real logo */}
+        <image href={gameAssets.logo} x="330" y="54" width="340" height="40" preserveAspectRatio="xMidYMid meet" />
 
         {/* Hatch — the purple recessed panel. Everything falls out of here. */}
         <rect
