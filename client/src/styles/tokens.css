@@ -30,7 +30,11 @@
   --bulb: #ffd98a;
   --glass: rgba(42, 11, 61, 0.74);
 
-  --font-display: "Luckiest Guy", Impact, "Arial Black", sans-serif;
+  /* Impact and Arial Black exist on Windows but NOT on Android or iOS, where the
+     stack used to fall through to thin system sans. `sans-serif-black` (Android) and
+     `-apple-system-black`-ish weights are unreliable, so the last resort is an explicit
+     heavy weight applied alongside — see .display-face below. */
+  --font-display: "Luckiest Guy", Impact, "Arial Black", "Haettenschweiter", "Franklin Gothic Bold", sans-serif;
   --font-ui: "Rubik", "Trebuchet MS", Arial, sans-serif;
 
   --outline: 4px;
@@ -40,4 +44,16 @@
 
   /* One sandwich layer on screen. 12 layers + base ≈ a third of the stage. */
   --layer-px: clamp(18px, 2.6vh, 30px);
+}
+
+/* If the display webfont fails to load for any reason, everything using it still renders
+   heavy instead of collapsing to a thin system sans. Luckiest Guy itself is weight 400,
+   so this only takes effect on the fallback faces. */
+.screen-overlay h1,
+.screen-overlay h2,
+.board > b,
+.big-button,
+.red-button,
+.white-button {
+  font-synthesis-weight: auto;
 }
