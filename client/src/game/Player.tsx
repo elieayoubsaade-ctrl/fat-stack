@@ -37,18 +37,41 @@ export default function Player(p: PlayerProps) {
 
   return (
     <div className="player" style={{ left: `${p.x}%` }}>
-      <div key={p.moodKey} className={`player-body mood-${p.mood}`} style={{ ["--lean" as string]: `${lean}deg` }}>
-        <img className="player-art" src={p.character.art} alt={p.character.name} draggable={false} />
+      <div
+        key={p.moodKey}
+        className={`player-body mood-${p.mood}`}
+        style={{ ["--lean" as string]: `${lean}deg` }}
+      >
+        <img
+          className="player-art"
+          src={p.character.art}
+          alt={p.character.name}
+          draggable={false}
+        />
         {p.mood === "panic" && <span className="sweat" />}
       </div>
 
-      <div className="tray" style={{ bottom: `${(1 - p.character.trayY) * 100}%` }}>
+      <div
+        className="tray"
+        style={{ bottom: `${(1 - p.character.trayY) * 100}%` }}
+      >
         <svg className="tray-art" viewBox="0 0 200 46" aria-hidden="true">
-          <ellipse cx="100" cy="23" rx="96" ry="19" fill="#d9d4e3" stroke="#111" strokeWidth="5" />
+          <ellipse
+            cx="100"
+            cy="23"
+            rx="96"
+            ry="19"
+            fill="#d9d4e3"
+            stroke="#111"
+            strokeWidth="5"
+          />
           <ellipse cx="100" cy="18" rx="78" ry="11" fill="#f2eff7" />
         </svg>
 
-        <div className={`tower heat-${p.heat}`} style={{ ["--wobble" as string]: wobble }}>
+        <div
+          className={`tower heat-${p.heat}`}
+          style={{ ["--wobble" as string]: wobble }}
+        >
           <img className="tower-base" src={gameAssets.ingBase} alt="" />
           {p.layers.map((kind, i) => (
             <img
@@ -56,27 +79,47 @@ export default function Player(p: PlayerProps) {
               className="tower-layer"
               src={artFor(kind)}
               alt=""
-              style={{ transform: `rotate(${((i * 37) % 9) - 4}deg)`, zIndex: i + 2 }}
+              style={{
+                transform: `rotate(${((i * 37) % 9) - 4}deg)`,
+                zIndex: i + 2,
+              }}
             />
           ))}
         </div>
 
         {p.pot > 0 && (
-          <div className={`pot-chip ${p.lidLive ? "lid-live" : ""}`} style={{ bottom: `calc(var(--layer-px) * ${p.layers.length + 2.2})` }}>
+          <div
+            className={`pot-chip ${p.lidLive ? "lid-live" : ""}`}
+            style={{
+              bottom: `calc(var(--layer-px) * ${p.layers.length + 2.2})`,
+            }}
+          >
             <span>POT</span>
             <b>{fmt(p.pot)}</b>
             {p.lidLive && <i>LID = {fmt(p.bankValue)}</i>}
           </div>
         )}
         {p.layers.length > 0 && (
-          <div className={`height-chip heat-${p.heat}`} style={{ bottom: `calc(var(--layer-px) * ${p.layers.length + 2.2})` }}>
+          <div
+            className={`height-chip heat-${p.heat}`}
+            style={{
+              bottom: `calc(var(--layer-px) * ${p.layers.length + 2.2})`,
+            }}
+          >
             {p.layers.length}/{TOWER.collapseAt}
           </div>
         )}
       </div>
 
-      {p.debris.map((d) => (
-        <div key={d.id} className="debris" style={{ ["--dx" as string]: `${d.dx}%`, ["--rot" as string]: `${d.rot}deg` }}>
+      {p.debris.map(d => (
+        <div
+          key={d.id}
+          className="debris"
+          style={{
+            ["--dx" as string]: `${d.dx}%`,
+            ["--rot" as string]: `${d.rot}deg`,
+          }}
+        >
           <img src={artFor(d.kind)} alt="" />
         </div>
       ))}

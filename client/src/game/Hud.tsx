@@ -25,18 +25,49 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 
 function SauceCup({ tipped }: { tipped: boolean }) {
   return (
-    <svg className={`cup ${tipped ? "tipped" : ""}`} viewBox="0 0 40 40" aria-hidden="true">
-      <path d="M6 10 H34 L30 36 H10 Z" fill="#fff4e3" stroke="#111" strokeWidth="3" strokeLinejoin="round" />
-      <rect x="4" y="6" width="32" height="7" rx="2" fill="#e02b2b" stroke="#111" strokeWidth="3" />
-      <path d="M13 18 Q20 22 27 18" stroke="#e02b2b" strokeWidth="3" fill="none" strokeLinecap="round" />
+    <svg
+      className={`cup ${tipped ? "tipped" : ""}`}
+      viewBox="0 0 40 40"
+      aria-hidden="true"
+    >
+      <path
+        d="M6 10 H34 L30 36 H10 Z"
+        fill="#fff4e3"
+        stroke="#111"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <rect
+        x="4"
+        y="6"
+        width="32"
+        height="7"
+        rx="2"
+        fill="#e02b2b"
+        stroke="#111"
+        strokeWidth="3"
+      />
+      <path
+        d="M13 18 Q20 22 27 18"
+        stroke="#e02b2b"
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 export default function Hud(p: HudProps) {
   const nextGroup = ITEMS[p.nextKind].group;
-  const nextLabel = nextGroup === "hazard" ? "DODGE!" : p.nextKind === "lid" ? "BANK!" : "NEXT UP";
-  const nextTone = nextGroup === "hazard" ? "danger" : p.nextKind === "lid" ? "gold" : "";
+  const nextLabel =
+    nextGroup === "hazard"
+      ? "DODGE!"
+      : p.nextKind === "lid"
+        ? "BANK!"
+        : "NEXT UP";
+  const nextTone =
+    nextGroup === "hazard" ? "danger" : p.nextKind === "lid" ? "gold" : "";
 
   return (
     <>
@@ -53,7 +84,10 @@ export default function Hud(p: HudProps) {
       <div className={`board board-clock ${p.urgent ? "urgent" : ""}`}>
         <b>{p.seconds.toString().padStart(2, "0")}</b>
         <i>{p.phaseLabel}</i>
-        <div className="cups" aria-label={`${p.fumbles} of ${ROUND.maxFumbles} fumbles`}>
+        <div
+          className="cups"
+          aria-label={`${p.fumbles} of ${ROUND.maxFumbles} fumbles`}
+        >
           {Array.from({ length: ROUND.maxFumbles }, (_, i) => (
             <SauceCup key={i} tipped={i < p.fumbles} />
           ))}
