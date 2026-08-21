@@ -5,7 +5,7 @@
   position: absolute;
   bottom: 8%;
   height: 34%;
-  width: clamp(160px, 26vh, 320px);
+  width: clamp(115px, 19vh, 230px);
   transform: translateX(-50%);
   pointer-events: none;
   z-index: 5;
@@ -56,7 +56,7 @@
 .tray {
   position: absolute;
   left: 50%;
-  width: clamp(110px, 16vh, 190px);
+  width: clamp(88px, 13vh, 150px);
   transform: translateX(-50%);
   z-index: 3;
 }
@@ -96,7 +96,7 @@
   margin-bottom: calc(var(--layer-px) * -0.28);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
-.tower-base + .tower-layer { margin-bottom: calc(clamp(110px, 16vh, 190px) * -0.3); }
+.tower-base + .tower-layer { margin-bottom: calc(clamp(88px, 13vh, 150px) * -0.3); }
 
 .pot-chip {
   position: absolute;

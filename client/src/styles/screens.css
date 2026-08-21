@@ -63,7 +63,10 @@
 /* Character carousel */
 .select-screen { flex-direction: column; gap: clamp(8px, 1.6vh, 18px); --card-w: clamp(150px, 19vh, 250px); }
 .carousel { width: 100%; overflow: hidden; padding: clamp(8px, 2vh, 24px) 0; }
-.carousel-track { display: flex; width: max-content; transition: transform 260ms var(--ease-out); }
+/* The track starts at the carousel's midline (margin-left 50% is relative to the
+   parent), so the transform only ever has to pull back in card-widths — centring is
+   exact for every index, not just the middle one. */
+.carousel-track { display: flex; width: max-content; margin-left: 50%; transition: transform 260ms var(--ease-out); }
 .char-card {
   position: relative;
   width: var(--card-w);

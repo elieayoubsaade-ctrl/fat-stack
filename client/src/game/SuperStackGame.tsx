@@ -900,7 +900,6 @@ export default function SuperStackGame() {
             seconds={seconds}
             phaseLabel={view.phaseLabel}
             urgent={urgent}
-            nextKind={view.nextKind}
             combo={view.combo}
             multiplier={view.multiplier}
             topScore={topScore}

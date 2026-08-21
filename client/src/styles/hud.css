@@ -33,32 +33,6 @@
 .cup.tipped { transform: rotate(70deg) translateY(4px); opacity: 0.45; }
 
 /* NEXT UP hangs on the kiosk face, just left of the hatch. */
-.hatch-sign {
-  position: absolute;
-  z-index: 7;
-  top: 40%;
-  left: 11.5%;
-  transform: translate(-50%, -50%);
-  background: var(--cream);
-  border: var(--outline) solid var(--ink);
-  border-radius: 10px;
-  box-shadow: var(--burst-shadow);
-  padding: 4px 10px 6px;
-  text-align: center;
-  color: var(--ink);
-  pointer-events: none;
-  min-width: clamp(90px, 8vw, 150px);
-}
-.hatch-sign strong { display: block; font: 400 clamp(13px, 2.2vh, 20px) var(--font-display); letter-spacing: 2px; color: #fff; background: var(--purple); border: 2px solid var(--ink); border-radius: 6px; padding: 1px 8px; }
-.hatch-sign .next-item { margin: 4px auto 0; width: clamp(40px, 7vh, 72px); height: clamp(40px, 7vh, 72px); display: grid; place-items: center; }
-.hatch-sign span { display: block; font: 800 clamp(9px, 1.4vh, 12px) var(--font-ui); text-transform: uppercase; letter-spacing: 1px; }
-.hatch-sign.danger strong { background: var(--red); animation: blink 0.8s steps(2, end) infinite; }
-.hatch-sign.danger { box-shadow: 0 0 0 3px var(--red), var(--burst-shadow); }
-.hatch-sign.gold strong { background: var(--gold); color: var(--ink); }
-.hatch-sign.gold { box-shadow: 0 0 0 3px var(--gold), var(--burst-shadow); }
-@keyframes blink { 50% { opacity: 0.45; } }
-
-/* Combo meter on the right edge. */
 .combo-meter {
   position: absolute;
   z-index: 7;

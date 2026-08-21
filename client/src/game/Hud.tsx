@@ -13,7 +13,6 @@ export type HudProps = {
   seconds: number;
   phaseLabel: string;
   urgent: boolean;
-  nextKind: ItemKind;
   combo: number;
   multiplier: number;
   topScore: number;
@@ -59,16 +58,6 @@ function SauceCup({ tipped }: { tipped: boolean }) {
 }
 
 export default function Hud(p: HudProps) {
-  const nextGroup = ITEMS[p.nextKind].group;
-  const nextLabel =
-    nextGroup === "hazard"
-      ? "DODGE!"
-      : p.nextKind === "lid"
-        ? "BANK!"
-        : "NEXT UP";
-  const nextTone =
-    nextGroup === "hazard" ? "danger" : p.nextKind === "lid" ? "gold" : "";
-
   return (
     <>
       <div className="board board-banked">
@@ -92,14 +81,6 @@ export default function Hud(p: HudProps) {
             <SauceCup key={i} tipped={i < p.fumbles} />
           ))}
         </div>
-      </div>
-
-      <div className={`hatch-sign ${nextTone}`}>
-        <strong>{nextLabel}</strong>
-        <div className="next-item">
-          <Ingredient kind={p.nextKind} />
-        </div>
-        <span>{ITEMS[p.nextKind].label}</span>
       </div>
 
       <div className="combo-meter">

@@ -21,7 +21,7 @@ export default function SelectScreen({ characters, selectedId, onSelect, onPick 
     <section className="screen-overlay select-screen" aria-label="Choose your character">
       <h2>CHOOSE YOUR STACKER</h2>
       <div className="carousel">
-        <div className="carousel-track" style={{ transform: `translateX(calc(50% - (${index} + 0.5) * var(--card-w)))` }}>
+        <div className="carousel-track" style={{ transform: `translateX(calc(${index + 0.5} * var(--card-w) * -1))` }}>
           {characters.map((c, i) => {
             const offset = i - index;
             return (
