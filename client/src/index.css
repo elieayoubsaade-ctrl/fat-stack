@@ -192,9 +192,11 @@ img { -webkit-user-drag: none; }
   object-fit: contain;
   filter: drop-shadow(5px 7px 0 rgba(28, 23, 32, 0.16));
 }
-.host-mami { transform: rotate(-3deg); }
-.host-tuna { transform: rotate(3deg); }
+.host-mami { grid-column: 1; grid-row: 1; transform: rotate(-3deg); }
+.host-tuna { grid-column: 3; grid-row: 1; transform: rotate(3deg); }
 .start-center {
+  grid-column: 2;
+  grid-row: 1;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -460,21 +462,25 @@ img { -webkit-user-drag: none; }
   0%, 100% { transform: translateX(-50%) rotate(-2.4deg); }
   50% { transform: translateX(-50%) rotate(2.4deg); }
 }
-.tower-base { width: 100%; margin-top: calc(clamp(84px, 13vh, 120px) * -0.28); }
+.tower-base { width: 100%; position: relative; z-index: 1; }
 .tower-layer {
+  position: relative;
   width: 88%;
   height: clamp(13px, 2.3vh, 20px);
   object-fit: cover;
   object-position: center 42%;
   border-radius: 40% / 90%;
-  margin-top: calc(clamp(13px, 2.3vh, 20px) * -0.28);
+  /* In column-reverse, a negative bottom margin pulls a layer down onto the one below it. */
+  margin-bottom: calc(clamp(13px, 2.3vh, 20px) * -0.24);
   box-shadow: 0 2px 0 rgba(28, 23, 32, 0.2);
 }
+/* The first layer sinks into the top surface of the bread base. */
+.tower-base + .tower-layer { margin-bottom: calc(clamp(84px, 13vh, 120px) * -0.3); }
 .pot-chip {
   position: absolute;
-  bottom: 102%;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 46%;
+  right: 100%;
+  margin-right: 8px;
   z-index: 6;
   text-align: center;
   background: #fff;

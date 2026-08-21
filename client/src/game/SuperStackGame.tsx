@@ -858,6 +858,7 @@ export default function SuperStackGame() {
                 </div>
               )}
               <div className="tower">
+                <img className="tower-base" src={gameAssets.ingBase} alt="" />
                 {view.layers.map((kind, index) => (
                   <img
                     key={`${kind}-${index}`}
@@ -867,7 +868,6 @@ export default function SuperStackGame() {
                     style={{ transform: `rotate(${((index * 37) % 9) - 4}deg)`, zIndex: index + 2 }}
                   />
                 ))}
-                <img className="tower-base" src={gameAssets.ingBase} alt="" />
               </div>
               <img className="player-sprite" src={gameAssets.player} alt="The Fat Sandwich" />
               {layerCount > 0 && (
