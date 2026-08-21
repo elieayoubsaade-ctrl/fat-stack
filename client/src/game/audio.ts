@@ -36,10 +36,33 @@ function context(): AudioContext | null {
   return ctx;
 }
 
+/* ── Recorded samples ────────────────────────────────────────────────────── */
+
+/** The real bank sound — plays when the lid lands and the sandwich is stacked. */
+let bankBuffer: AudioBuffer | null = null;
+let bankLoadStarted = false;
+
+function loadBankSample() {
+  const c = context();
+  if (!c || bankBuffer || bankLoadStarted) return;
+  bankLoadStarted = true;
+  fetch(`${import.meta.env.BASE_URL}assets/sfx/bank.mp3`)
+    .then((response) => response.arrayBuffer())
+    .then((data) => c.decodeAudioData(data))
+    .then((buffer) => {
+      bankBuffer = buffer;
+    })
+    .catch(() => {
+      // Decode or fetch failed — the synth fallback in bank() covers it.
+      bankLoadStarted = false;
+    });
+}
+
 /** Call from a click or key press so the browser allows sound. */
 export function primeAudio() {
   const c = context();
   if (c && c.state === "suspended") void c.resume();
+  loadBankSample();
 }
 
 export function setMuted(next: boolean) {
@@ -130,11 +153,22 @@ function drop() {
   tone({ freq: 240, to: 150, duration: 0.14, type: "triangle", gain: 0.22 });
 }
 
-/** Banking a Super Stack — the biggest sound in the game. */
+/** Banking a Fat Stack — the biggest sound in the game. Plays the recorded SFX. */
 function bank(layers: number) {
+  const c = context();
+  if (c && master && !muted && bankBuffer) {
+    const src = c.createBufferSource();
+    const env = c.createGain();
+    src.buffer = bankBuffer;
+    env.gain.value = 0.95;
+    src.connect(env);
+    env.connect(master);
+    src.start();
+    return;
+  }
+  // Fallback if the recording has not loaded (first seconds offline, decode failure).
   const notes = [523, 659, 784, 1047];
   notes.forEach((freq, i) => tone({ freq, duration: 0.15, type: "square", gain: 0.34, delay: i * 0.07 }));
-  // A register "cha-ching" on top, brighter for taller banks.
   tone({ freq: 1568 + layers * 40, duration: 0.3, type: "triangle", gain: 0.28, delay: 0.28 });
   noise({ duration: 0.35, gain: 0.18, delay: 0.28, cutoff: 4000 });
 }
