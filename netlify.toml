@@ -5,6 +5,19 @@
 [build.environment]
   NODE_VERSION = "22"
 
+  # Backend. These are *publishable* keys — they are meant to be visible in the
+  # browser and are already embedded in the shipped JavaScript. All protection comes
+  # from Row Level Security in the database: the browser can read the leaderboard and
+  # call three specific functions, and can never read the table holding names and
+  # emails. See supabase/migrations for the policy.
+  VITE_SUPABASE_URL = "https://mgepcbfxijsdhmlmrtxh.supabase.co"
+  VITE_SUPABASE_KEY = "sb_publishable_JODcQAWY-AoNSMGWslwDrg_jZ7AY2DC"
+
+  # Analytics. Paste the PostHog *public project* key (starts phc_) to switch it on.
+  # Left blank the game runs normally and simply sends nothing.
+  VITE_POSTHOG_KEY = ""
+  VITE_POSTHOG_HOST = "https://eu.i.posthog.com"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

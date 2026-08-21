@@ -10,7 +10,7 @@ import { gameAssets } from "./assets";
 import Ingredient, { artFor } from "./Ingredient";
 import { isMuted, primeAudio, setMuted, setMusicIntensity, sfx, startMusic, stopMusic } from "./audio";
 import { CHARACTERS, characterById } from "./characters";
-import { COUNTDOWN_SECONDS, ITEMS, LEADERBOARD_SIZE, ROUND, TOWER, type ItemKind } from "./config";
+import { COUNTDOWN_SECONDS, ITEMS, ROUND, TOWER, type ItemKind } from "./config";
 import {
   autoDirection,
   bankValue,
@@ -21,6 +21,17 @@ import {
   type GameEvent,
   type Round,
 } from "./round";
+import {
+  backendConfigured,
+  claimUrl,
+  fetchLeaderboard,
+  flushQueuedPlays,
+  setInitials as pushInitials,
+  submitPlay,
+  type BoardEntry,
+} from "./api";
+import { track } from "./analytics";
+import QrCode from "./QrCode";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Helpers and local types
@@ -63,10 +74,8 @@ type RunSummary = {
 type FloatText = { id: number; text: string; x: number; y: number; tone: "topping" | "protein" | "bank" | "bad" };
 type Slam = { id: number; text: string; tone: "phase" | "go" | "warn" | "time" };
 type Debris = { id: number; kind: ItemKind; dx: number; rot: number };
-type ScoreEntry = { name: string; score: number };
-type ResultStage = "counting" | "reveal" | "initials" | "done";
+type ResultStage = "counting" | "initials" | "done";
 
-const SCORES_KEY = "fatsandwich-super-stack-scores";
 const BEST_KEY = "fatsandwich-super-stack-best";
 const CHAR_KEY = "fatsandwich-super-stack-char";
 
@@ -77,26 +86,7 @@ const MAX_FRAME = 0.25;
 /** Seconds of inactivity on the start screen before the attract demo begins. */
 const ATTRACT_AFTER = 20;
 
-/** Seed board, set from the measured score range in `pnpm balance`. */
-const DEFAULT_SCORES: ScoreEntry[] = [
-  { name: "AYA", score: 86400 },
-  { name: "MO", score: 79250 },
-  { name: "SAM", score: 71800 },
-  { name: "LEO", score: 64300 },
-  { name: "NOOR", score: 57900 },
-];
-
 const fmt = (n: number) => n.toLocaleString("en-US");
-
-function loadScores(): ScoreEntry[] {
-  try {
-    const saved = localStorage.getItem(SCORES_KEY);
-    const parsed = saved ? (JSON.parse(saved) as ScoreEntry[]) : DEFAULT_SCORES;
-    return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SCORES;
-  } catch {
-    return DEFAULT_SCORES;
-  }
-}
 
 function loadBest(): number {
   try {
@@ -142,7 +132,8 @@ export default function SuperStackGame() {
   const [screen, setScreen] = useState<Screen>("start");
   const [view, setView] = useState<View>(() => toView(createRound()));
   const [lastRun, setLastRun] = useState<RunSummary | null>(null);
-  const [scores, setScores] = useState<ScoreEntry[]>(loadScores);
+  const [board, setBoard] = useState<BoardEntry[]>([]);
+  const [boardLive, setBoardLive] = useState(false);
   const [best, setBest] = useState<number>(loadBest);
   const [muted, setMutedState] = useState(isMuted());
   const [paused, setPaused] = useState(false);
@@ -164,13 +155,20 @@ export default function SuperStackGame() {
     }
   });
   const playerChar = characterById(charId);
+  const characterRef = useRef(charId);
+  const qualifiedRef = useRef(false);
+  useEffect(() => {
+    characterRef.current = charId;
+  }, [charId]);
 
   // Results sequencing
   const [resultStage, setResultStage] = useState<ResultStage>("done");
   const [countedScore, setCountedScore] = useState(0);
-  const [initials, setInitials] = useState<[number, number, number]>([0, 0, 0]);
-  const [initialSlot, setInitialSlot] = useState(0);
+  const [claimToken, setClaimToken] = useState<string | null>(null);
   const [savedRank, setSavedRank] = useState<number | null>(null);
+  const [qualified, setQualified] = useState(false);
+  const [initials, setInitialsValue] = useState<[number, number, number]>([0, 0, 0]);
+  const [initialSlot, setInitialSlot] = useState(0);
 
   const roundRef = useRef<Round | null>(null);
   const keysRef = useRef({ left: false, right: false });
@@ -198,9 +196,20 @@ export default function SuperStackGame() {
   useEffect(() => {
     hasPlayedRef.current = hasPlayed;
   }, [hasPlayed]);
+  /** Pull the live board, and push anything a dropped connection stranded earlier. */
+  const refreshBoard = useCallback(async () => {
+    const { entries, live } = await fetchLeaderboard();
+    setBoard(entries);
+    setBoardLive(live);
+  }, []);
+
   useEffect(() => {
-    localStorage.setItem(SCORES_KEY, JSON.stringify(scores));
-  }, [scores]);
+    void refreshBoard();
+    void flushQueuedPlays().then((sent) => {
+      if (sent > 0) void refreshBoard();
+    });
+    track("game_opened", { backend: backendConfigured });
+  }, [refreshBoard]);
   useEffect(() => {
     localStorage.setItem(BEST_KEY, String(best));
   }, [best]);
@@ -208,8 +217,8 @@ export default function SuperStackGame() {
     localStorage.setItem(CHAR_KEY, charId);
   }, [charId]);
 
-  const boardCutoff = scores.length >= LEADERBOARD_SIZE ? (scores[scores.length - 1]?.score ?? 0) : 0;
-  const topScore = scores[0]?.score ?? 0;
+  const topScore = board[0]?.score ?? 0;
+  const boardCutoff = board.length >= 10 ? (board[board.length - 1]?.score ?? 0) : 0;
 
   const pushSlam = useCallback((text: string, tone: Slam["tone"]) => {
     uidRef.current += 1;
@@ -316,10 +325,54 @@ export default function SuperStackGame() {
       reason: round.ended,
     });
     setSavedRank(null);
+    setClaimToken(null);
+    setQualified(false);
+    qualifiedRef.current = false;
+    setInitialsValue([0, 0, 0]);
+    setInitialSlot(0);
     setCountedScore(0);
     setResultStage("counting");
     setScreen("results");
-  }, []);
+
+    track("round_completed", {
+      score: round.score,
+      banks: round.banks,
+      biggest_bank: round.biggestBank,
+      fumbles: round.fumbles,
+      collapses: round.collapses,
+      caught: round.caught,
+      pot_lost: round.potLostToCollapse + round.potLostToTime,
+      ended_reason: round.ended,
+      character_id: characterRef.current,
+      duration: Math.round(round.elapsed),
+    });
+
+    // Send the round. Never blocks the screen — a failure just means no QR and the
+    // score is queued for the next time we have signal.
+    void submitPlay({
+      score: round.score,
+      banks: round.banks,
+      biggestBank: round.biggestBank,
+      bestCombo: round.bestCombo,
+      fumbles: round.fumbles,
+      collapses: round.collapses,
+      caught: round.caught,
+      potLost: round.potLostToCollapse + round.potLostToTime,
+      characterId: characterRef.current,
+      endedReason: round.ended,
+      durationSeconds: round.elapsed,
+    }).then((result) => {
+      if (!result) return;
+      setSavedRank(result.rank);
+      setQualified(result.qualifies);
+      qualifiedRef.current = result.qualifies;
+      if (result.qualifies) {
+        setClaimToken(result.claimToken);
+        track("made_leaderboard", { rank: result.rank, score: round.score });
+      }
+      void refreshBoard();
+    });
+  }, [refreshBoard]);
 
   const finishRef = useRef(finishRound);
   useEffect(() => {
@@ -348,8 +401,13 @@ export default function SuperStackGame() {
     setSlam(null);
     setView(toView(round));
     setMusicIntensity("WARM UP");
-    if (asAttract) startMusic();
-    else setHasPlayed(true);
+    if (asAttract) {
+      startMusic();
+      track("attract_shown", {});
+    } else {
+      setHasPlayed(true);
+      track("round_started", { character_id: characterRef.current });
+    }
     setScreen("playing");
   }, []);
 
@@ -556,30 +614,6 @@ export default function SuperStackGame() {
     if (roundRef.current) roundRef.current.targetX = null;
   }, []);
 
-  const spinInitial = useCallback(
-    (slot: number, dir: number) => {
-      sfx.uiPress();
-      setInitials((cur) => {
-        const next = [...cur] as [number, number, number];
-        next[slot] = (next[slot] + dir + 26) % 26;
-        return next;
-      });
-    },
-    [],
-  );
-
-  const confirmInitials = useCallback(() => {
-    if (!lastRun) return;
-    sfx.fanfare();
-    const name = initials.map((i) => String.fromCharCode(65 + i)).join("");
-    setScores((current) => {
-      const next = [...current, { name, score: lastRun.score }].sort((a, b) => b.score - a.score).slice(0, LEADERBOARD_SIZE);
-      setSavedRank(next.findIndex((e) => e.name === name && e.score === lastRun.score) + 1);
-      return next;
-    });
-    setResultStage("done");
-  }, [initials, lastRun]);
-
   /** Results sequencing: count the score up, celebrate, then take initials. */
   useEffect(() => {
     if (screen !== "results" || !lastRun || resultStage !== "counting") return;
@@ -595,27 +629,43 @@ export default function SuperStackGame() {
         raf = requestAnimationFrame(step);
         return;
       }
-      const qualifies = lastRun.score > boardCutoff || scores.length < LEADERBOARD_SIZE;
       const isBest = lastRun.score > best;
       if (isBest) setBest(lastRun.score);
-      if (lastRun.score > topScore) {
+      if (topScore > 0 && lastRun.score > topScore) {
         sfx.fanfare();
         pushSlam("NEW #1 TODAY!", "go");
       } else if (isBest) {
         sfx.fanfare();
         pushSlam("NEW PERSONAL BEST!", "go");
       }
-      if (qualifies) {
-        setResultStage("initials");
-      } else {
-        setResultStage("done");
-      }
+      setResultStage(qualifiedRef.current ? "initials" : "done");
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [screen, resultStage, lastRun, best, boardCutoff, topScore, scores.length, pushSlam]);
+  }, [screen, resultStage, lastRun, best, topScore, pushSlam]);
 
-  /** Keyboard entry for the three initials. */
+  /**
+   * The board is written the moment the player confirms, so their initials are up on
+   * the screen before they have even picked up their phone.
+   */
+  const spinInitial = useCallback((slot: number, dir: number) => {
+    sfx.uiPress();
+    setInitialsValue((current) => {
+      const next = [...current] as [number, number, number];
+      next[slot] = (next[slot] + dir + 26) % 26;
+      return next;
+    });
+  }, []);
+
+  const confirmInitials = useCallback(() => {
+    sfx.fanfare();
+    const text = initials.map((i) => String.fromCharCode(65 + i)).join("");
+    if (claimToken) {
+      void pushInitials(claimToken, text).then(() => void refreshBoard());
+    }
+    setResultStage("done");
+  }, [initials, claimToken, refreshBoard]);
+
   useEffect(() => {
     if (screen !== "results" || resultStage !== "initials") return;
     const onKey = (event: KeyboardEvent) => {
@@ -627,22 +677,22 @@ export default function SuperStackGame() {
         spinInitial(initialSlot, -1);
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
-        setInitialSlot((s) => Math.max(0, s - 1));
+        setInitialSlot((slot) => Math.max(0, slot - 1));
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        setInitialSlot((s) => Math.min(2, s + 1));
+        setInitialSlot((slot) => Math.min(2, slot + 1));
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         confirmInitials();
       } else if (/^[a-zA-Z]$/.test(event.key)) {
         event.preventDefault();
         const code = event.key.toUpperCase().charCodeAt(0) - 65;
-        setInitials((cur) => {
-          const next = [...cur] as [number, number, number];
+        setInitialsValue((current) => {
+          const next = [...current] as [number, number, number];
           next[initialSlot] = code;
           return next;
         });
-        setInitialSlot((s) => Math.min(2, s + 1));
+        setInitialSlot((slot) => Math.min(2, slot + 1));
         sfx.uiPress();
       }
     };
@@ -741,6 +791,7 @@ export default function SuperStackGame() {
                 onClick={() => {
                   sfx.uiPress();
                   setCharId(c.id);
+                  track("character_selected", { character_id: c.id });
                 }}
               >
                 <img src={c.art} alt={c.name} />
@@ -1047,7 +1098,7 @@ export default function SuperStackGame() {
 
             {resultStage === "initials" && (
               <div className="initials-entry">
-                <strong>YOU MADE THE BOARD — SIGN IT</strong>
+                <strong>YOU MADE THE BOARD{savedRank ? ` — #${savedRank}` : ""} — SIGN IT</strong>
                 <div className="initials-slots">
                   {initials.map((letter, slot) => (
                     <div
@@ -1085,6 +1136,16 @@ export default function SuperStackGame() {
               </div>
             )}
 
+            {resultStage === "done" && claimToken && (
+              <div className="claim-invite">
+                <div className="claim-copy">
+                  <strong>CLAIM YOUR MERCH</strong>
+                  <span>Scan with your phone to collect your prize</span>
+                </div>
+                <QrCode value={claimUrl(claimToken)} size={190} />
+              </div>
+            )}
+
             {resultStage === "done" && (
               <div className="merch-note">HIGH SCORE = MERCH · SHOW STAFF YOUR SCORE</div>
             )}
@@ -1113,16 +1174,23 @@ export default function SuperStackGame() {
           <div className="board-center">
             <h2>TODAY’S TOP STACKS</h2>
             <div className="score-list">
-              {scores.map((entry, index) => (
-                <div className={index === 0 ? "first" : ""} key={`${entry.name}-${entry.score}-${index}`}>
+              {board.length === 0 && <div className="board-empty">NO SCORES YET TODAY — BE FIRST</div>}
+              {board.map((entry, index) => (
+                <div
+                  className={`${index === 0 ? "first" : ""} ${entry.claimed ? "" : "unclaimed"}`}
+                  key={`${entry.rank}-${entry.score}-${index}`}
+                >
                   <span>
-                    {index + 1}. {entry.name}
+                    {entry.rank}. {entry.name}
                   </span>
                   <b>{fmt(entry.score)}</b>
                 </div>
               ))}
             </div>
-            <p>{boardCutoff > 0 ? `SCORE ${fmt(boardCutoff + 1)}+ TO JOIN THE BOARD` : "ANY SCORE JOINS THE BOARD"}</p>
+            <p>
+              {boardCutoff > 0 ? `SCORE ${fmt(boardCutoff + 1)}+ TO JOIN THE BOARD` : "ANY SCORE JOINS THE BOARD"}
+              {backendConfigured && !boardLive && <em className="board-offline"> · OFFLINE — SHOWING LAST KNOWN</em>}
+            </p>
             <div className="merch-note">CLAIM YOUR MERCH · SHOW STAFF YOUR SCORE</div>
             <button className="red-button big-button" onClick={() => goTo("select")}>
               PLAY
