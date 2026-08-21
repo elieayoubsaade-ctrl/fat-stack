@@ -2,13 +2,20 @@
  * SUPER STACK — BALANCE SHEET
  *
  * This is the one file to edit when the game feels too hard, too easy, or too slow.
- * Everything here is plain numbers. Nothing here is code you need to understand.
+ * Everything here is plain numbers. After changing anything, run `pnpm balance` — it plays
+ * thousands of rounds and tells you whether the game still holds together.
  *
  * Positions are measured on a 0–100 grid across the play lane:
  *   x = 0 is the far left, x = 100 is the far right
  *   y = 0 is the top,      y = 100 is the floor
  *
  * Speeds are "grid units per second", so the game runs identically on every screen.
+ *
+ * THE ECONOMY (the heart of the game):
+ *   Catches do NOT pay into your score. They pay into a PENDING POT and add a layer to
+ *   your sandwich tower. Catching a tiger-crunch lid BANKS the pot into your score with a
+ *   bonus that grows with tower height. Stack past the collapse limit and the tower falls —
+ *   the whole unbanked pot is lost. Anything unbanked when time runs out is also lost.
  */
 
 export type ItemGroup = "protein" | "topping" | "lid" | "hazard";
@@ -17,13 +24,13 @@ export type ItemKind =
   | "turkey" | "pastrami" | "roast"
   | "bacon" | "lettuce" | "tomato" | "onion" | "pickle" | "pepper"
   | "lid"
-  | "sauce" | "jar" | "wilted";
+  | "sauce";
 
 export type ItemSpec = {
   /** Name shown to the player. */
   label: string;
   group: ItemGroup;
-  /** Points before the combo multiplier. */
+  /** Points added to the pending pot (before combo and phase bonuses). */
   points: number;
   /** How fast it falls. Lower = slower = easier to catch. */
   fallSpeed: number;
@@ -33,8 +40,9 @@ export type ItemSpec = {
 
 /**
  * THE FALLING ITEMS
- * Values follow FALLING_ASSET_SYSTEM.md: proteins are slow, heavy and valuable;
- * toppings are fast and cheap; the tiger-crunch lid is the rare finishing catch.
+ * Per FALLING_ASSET_SYSTEM.md: proteins are slow, heavy and valuable; toppings are fast
+ * and cheap; the lid is the bank. The pickle jar and wilted lettuce were cut from the
+ * approved render package — the tipped sauce cup is the one fumble object.
  */
 export const ITEMS: Record<ItemKind, ItemSpec> = {
   // Proteins — the big catches. Slow, wide, worth the most.
@@ -50,18 +58,16 @@ export const ITEMS: Record<ItemKind, ItemSpec> = {
   pickle:   { label: "Pickles",          group: "topping", points: 100, fallSpeed: 58, size: 1.0 },
   pepper:   { label: "Pepperoncini",     group: "topping", points: 100, fallSpeed: 58, size: 1.0 },
 
-  // The finish. Rare, slow, and completes a Super Stack.
-  lid:      { label: "Tiger-crunch lid", group: "lid",     points: 750, fallSpeed: 33, size: 1.45 },
+  // The bank. Catch it to cash in your pot. Miss it and the gamble continues.
+  lid:      { label: "Tiger-crunch lid", group: "lid",     points: 0,   fallSpeed: 34, size: 1.45 },
 
-  // Fumbles — deli mishaps. Catching one costs a life.
-  sauce:    { label: "Sauce cup",        group: "hazard",  points: 0,   fallSpeed: 48, size: 1.0 },
-  jar:      { label: "Pickle jar",       group: "hazard",  points: 0,   fallSpeed: 46, size: 1.1 },
-  wilted:   { label: "Wilted lettuce",   group: "hazard",  points: 0,   fallSpeed: 50, size: 1.0 },
+  // The fumble. Catching one costs a life.
+  sauce:    { label: "Sauce cup",        group: "hazard",  points: 0,   fallSpeed: 48, size: 1.05 },
 };
 
 export const PROTEINS: ItemKind[] = ["turkey", "pastrami", "roast"];
 export const TOPPINGS: ItemKind[] = ["bacon", "lettuce", "tomato", "onion", "pickle", "pepper"];
-export const HAZARDS: ItemKind[] = ["sauce", "jar", "wilted"];
+export const HAZARDS: ItemKind[] = ["sauce"];
 
 /** THE ROUND */
 export const ROUND = {
@@ -69,6 +75,8 @@ export const ROUND = {
   seconds: 60,
   /** Fumbles allowed before the round ends. */
   maxFumbles: 3,
+  /** Hazards never spawn during the first N seconds — new players learn catching first. */
+  gracePeriod: 8,
   /** How fast the player slides across the lane, in grid units per second. */
   playerSpeed: 78,
   /** How wide the player's catching area is, either side of centre. Bigger = easier. */
@@ -82,40 +90,55 @@ export const ROUND = {
   /** Items never spawn closer than this to the lane edges. */
   spawnMargin: 9,
   /** Never allow more than this many items on screen at once. */
-  maxItems: 9,
+  maxItems: 12,
 };
 
 /**
  * DIFFICULTY CURVE
- * The round moves through these phases. Each one spawns faster, throws more
- * fumbles, and speeds everything up, so the last 20 seconds feel like a rush.
- *
- * `scoreScale` is what makes surviving worth it: everything caught in the RUSH is
- * worth far more, so a player who fumbles out early misses the best part of the round.
+ * Each phase spawns faster and falls faster, so the last stretch is a rush.
+ * `potScale` multiplies what each catch adds to the pot — surviving to the RUSH is
+ * where the money is.
  */
 export const PHASES = [
-  { untilSecond: 20, label: "WARM UP",  spawnMs: 900, hazardChance: 0.08, speedScale: 1.0,  scoreScale: 1.0 },
-  { untilSecond: 42, label: "STACK IT", spawnMs: 680, hazardChance: 0.14, speedScale: 1.2,  scoreScale: 1.35 },
-  { untilSecond: 60, label: "RUSH!",    spawnMs: 500, hazardChance: 0.19, speedScale: 1.45, scoreScale: 1.8 },
+  { untilSecond: 20, label: "WARM UP",  spawnMs: 850, hazardChance: 0.10, speedScale: 1.0,  potScale: 1.0 },
+  { untilSecond: 42, label: "STACK IT", spawnMs: 620, hazardChance: 0.16, speedScale: 1.2,  potScale: 1.35 },
+  { untilSecond: 60, label: "RUSH!",    spawnMs: 420, hazardChance: 0.20, speedScale: 1.45, potScale: 1.8 },
 ];
 
-/** THE TIGER-CRUNCH LID — the finishing move. */
-export const LID = {
-  /** Layers you must stack before a lid can appear. */
-  proteinsNeeded: 2,
-  toppingsNeeded: 4,
-  /** Once you qualify, the chance each spawn is a lid. */
-  chancePerSpawn: 0.22,
-  /** Minimum gap between lids, in milliseconds. */
-  cooldownMs: 14000,
-  /** Extra points per layer in the sandwich you just completed. */
-  bonusPerLayer: 100,
+/**
+ * THE TOWER AND THE BANK — the push-your-luck core.
+ */
+export const TOWER = {
+  /** The tower collapses at this many layers and the whole pot is lost. */
+  collapseAt: 12,
+  /** The tower starts visibly wobbling from this many layers. */
+  wobbleAt: 8,
+  /** Lids only start arriving once the tower is a real sandwich. */
+  lidMinLayers: 3,
+  /** Seconds between lid opportunities (random inside this window)... */
+  lidIntervalMin: 1.5,
+  lidIntervalMax: 4,
+  /** ...tightened by this many seconds per layer above the minimum (mercy for deep stacks). */
+  lidMercyPerLayer: 0.3,
+  /** Banking pays the pot PLUS layers² × this. Quadratic: one 10-stack beats two 5-stacks. */
+  bankBonusPerLayerSquared: 80,
+};
+
+/**
+ * SPAWN FAIRNESS
+ * Pure randomness produces streaks that feel rigged. These rules bend it toward fair:
+ */
+export const FAIRNESS = {
+  /** Never two hazards in a row. */
+  noConsecutiveHazards: true,
+  /** If this many spawns pass without a protein, the next one is forced to be one. */
+  maxSpawnsWithoutProtein: 6,
 };
 
 /**
  * COMBO — consecutive catches.
- * Catching a fumble object resets it to zero. Dropping good food only halves it,
- * so a slip costs you but does not wipe out a whole round of good play.
+ * Catching a hazard resets it to zero. Dropping good food halves it, so one slip stings
+ * without wiping out a whole round of good play.
  */
 export const COMBO_TIERS = [
   { from: 18, multiplier: 5 },
@@ -135,19 +158,17 @@ export function phaseAt(elapsedSeconds: number) {
 }
 
 /**
- * END-OF-ROUND BONUSES
- * These are where a careful player pulls away from a frantic one. Both are printed
- * on the results receipt so the player can see exactly why they scored what they did.
+ * END-OF-ROUND BONUSES — where careful play pulls away from frantic play.
+ * Both are printed on the results receipt.
  */
 export const END_BONUS = {
-  /** Paid on a clean counter, by how many fumbles you finished with. */
+  /** Paid on a clean counter, indexed by how many fumbles you finished with. */
   cleanCounter: [15000, 6000, 1500] as number[],
   /** Paid for surviving all 60 seconds instead of fumbling out. */
   survivedRound: 10000,
 };
 
-/** How many layers a sandwich shows before the tray visually tops out. */
-export const MAX_VISIBLE_LAYERS = 8;
+/** The pre-round count-in, in seconds ("3 · 2 · 1 · STACK!"). */
+export const COUNTDOWN_SECONDS = 3;
 
-/** Score needed to reach the board is worked out from the board itself, never hard-coded. */
 export const LEADERBOARD_SIZE = 5;

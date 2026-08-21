@@ -1,5 +1,13 @@
 # Super Stack — Development Plan (plan of record)
 
+> **STATUS (21 Aug 2026): M1, M2 and M4 are built, validated and live at
+> https://fatsandwich-super-stack.netlify.app — plus most of M3 (results sequence,
+> initials entry, personal best, attract mode, character reactions, music, repeat-player
+> skip). The approved 12-render package is in as the final ingredient art. The simulator
+> validates all three economy verdicts (skill 2.0x · greed pays 1.12x · never-bank 57%).
+> Remaining: real playtesting on hardware, the deli-counter background art, and the
+> shared-leaderboard decision.**
+
 Synthesised from three sources: the v3 audit of our live build (`AUDIT.md`), the 625 Sandwich
 Stacker design teardown (the game that inspired ours), and what already works in our codebase.
 This replaces the original scaffold plan.

@@ -1,35 +1,31 @@
 /**
- * One falling object.
+ * One game item, drawn with its approved render.
  *
- * This is the single place where art is swapped in. Any item listed in `ART` renders as
- * a real photographed cut-out; anything not listed falls back to a CSS placeholder shape
- * so the game is playable and readable while the artwork is being produced.
- *
- * To add finished art: drop the file in `client/public/assets/`, add it to
- * `client/src/game/assets.ts`, then add one line to `ART` below. Nothing else changes.
+ * Every falling item now has final approved artwork (the 12-render package). Hazards
+ * additionally get a danger treatment from CSS (`.falling-item.hazard`) so nothing
+ * dangerous can ever be mistaken for food — the visual grammar rule.
  */
 import { gameAssets } from "./assets";
 import { ITEMS, type ItemKind } from "./config";
 
-const ART: Partial<Record<ItemKind, string>> = {
-  turkey: gameAssets.turkey,
-  pastrami: gameAssets.pastrami,
-  roast: gameAssets.roastBeef,
-  // TODO: bacon, lettuce, tomato, onion, pickle, pepper, lid, sauce, jar, wilted
+const ART: Record<ItemKind, string> = {
+  turkey: gameAssets.ingTurkey,
+  pastrami: gameAssets.ingPastrami,
+  roast: gameAssets.ingRoast,
+  bacon: gameAssets.ingBacon,
+  lettuce: gameAssets.ingLettuce,
+  tomato: gameAssets.ingTomato,
+  onion: gameAssets.ingOnion,
+  pickle: gameAssets.ingPickle,
+  pepper: gameAssets.ingPepper,
+  lid: gameAssets.ingLid,
+  sauce: gameAssets.ingSauce,
 };
 
-/** True for items still using a placeholder rather than finished artwork. */
-export function isPlaceholder(kind: ItemKind) {
-  return !ART[kind];
+export function artFor(kind: ItemKind) {
+  return ART[kind];
 }
 
 export default function Ingredient({ kind }: { kind: ItemKind }) {
-  const art = ART[kind];
-  const label = ITEMS[kind].label;
-
-  if (art) {
-    return <img className="ing-art" src={art} alt={label} draggable={false} />;
-  }
-
-  return <span className={`ing ing-${kind}`} role="img" aria-label={label} />;
+  return <img className="ing-art" src={ART[kind]} alt={ITEMS[kind].label} draggable={false} />;
 }

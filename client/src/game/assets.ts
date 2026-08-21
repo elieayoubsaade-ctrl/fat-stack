@@ -1,15 +1,12 @@
 /**
  * Every image the game loads at runtime.
  *
- * All are sized to roughly twice the largest size they are ever drawn at — the
- * full-resolution masters live in `design-references/full-resolution-originals/`.
- *
- * There is deliberately no deli-counter background here: the file that was meant to
- * provide it turned out to be a failed-generation placeholder, so the app paints a
- * brand-coloured ground in CSS until the real environment art exists.
+ * Ingredients are the approved 12-render package, trimmed and sized for play
+ * (full-resolution masters live in `design-references/approved-renders/`). Characters are
+ * the clean transparent cut-outs from the brand library.
  *
  * Paths are built from Vite's BASE_URL so the game works whether it is served from the
- * root of a domain or from a sub-path such as /fat-stack/.
+ * root of a domain or from a sub-path.
  */
 const base = import.meta.env.BASE_URL;
 
@@ -19,8 +16,18 @@ export const gameAssets = {
   pastramiMami: `${base}assets/pastrami-mami-host.png`,
   captainTuna: `${base}assets/captain-tuna-scorekeeper.png`,
   superStack: `${base}assets/super-stack-icon.png`,
-  deliPaper: `${base}assets/super-stack-deli-paper-bg.jpg`,
-  turkey: `${base}assets/turkey-ingredient-sticker.png`,
-  pastrami: `${base}assets/pastrami-ingredient-sticker.png`,
-  roastBeef: `${base}assets/roast-beef-ingredient-sticker.png`,
+
+  // The approved ingredient renders.
+  ingTurkey: `${base}assets/ing/turkey.png`,
+  ingPastrami: `${base}assets/ing/pastrami.png`,
+  ingRoast: `${base}assets/ing/roast.png`,
+  ingBacon: `${base}assets/ing/bacon.png`,
+  ingLettuce: `${base}assets/ing/lettuce.png`,
+  ingTomato: `${base}assets/ing/tomato.png`,
+  ingOnion: `${base}assets/ing/onion.png`,
+  ingPickle: `${base}assets/ing/pickle.png`,
+  ingPepper: `${base}assets/ing/pepper.png`,
+  ingLid: `${base}assets/ing/lid.png`,
+  ingBase: `${base}assets/ing/base.png`,
+  ingSauce: `${base}assets/ing/sauce.png`,
 } as const;
