@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { gameAssets } from "./assets";
+import Scene from "./Scene";
 import Ingredient, { artFor } from "./Ingredient";
 import { isMuted, primeAudio, setMuted, setMusicIntensity, sfx, startMusic, stopMusic } from "./audio";
 import { CHARACTERS, characterById } from "./characters";
@@ -681,6 +682,7 @@ export default function SuperStackGame() {
 
   return (
     <main className="super-stack-app">
+      <Scene hatchFlash={hatchFlash} bank={scorePulse} />
       <header className="game-topline" aria-label="Fatsandwich game header">
         <div className="logo-sticker">
           <img src={gameAssets.logo} alt="Fat Sandwich" />

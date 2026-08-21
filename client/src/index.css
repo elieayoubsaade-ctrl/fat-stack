@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
+@import "./styles/scene.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SUPER STACK — Comic Counter Carnival, composed for a 16:9 event TV.
@@ -11,28 +13,19 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --cream: #fff9e8;
   --paper: #fbf1d7;
-  --field: #eef3ee;          /* the cool, calm lane ground */
+  --field: #eef3ee;
   --field-line: rgba(44, 57, 71, 0.06);
-  --purple: #7b5ea7;
-  --purple-deep: #452a72;
-  --red: #e8191a;
-  --ink: #1c1720;
-  --yellow: #f5d020;
-  --gold: #f2c400;
   --mint: #a8e6c8;
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; min-width: 320px; height: 100%; margin: 0; }
 body {
   overflow: hidden;
-  background: var(--cream);
-  color: var(--ink);
-  font-family: "Trebuchet MS", Arial, sans-serif;
+  background: var(--purple-deep);
+  color: var(--cream);
+  font-family: var(--font-ui);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -46,11 +39,9 @@ img { -webkit-user-drag: none; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: var(--cream);
-  background-image:
-    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(123, 94, 167, 0.16), transparent 62%),
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(232, 25, 26, 0.1), transparent 70%);
+  background-color: var(--purple-deep);
 }
+.super-stack-app > *:not(.scene) { position: relative; z-index: 1; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .game-topline {

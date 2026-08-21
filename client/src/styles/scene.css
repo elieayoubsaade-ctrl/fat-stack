@@ -1,0 +1,73 @@
+/* The MOTB night scene. Back to front: sky, lights, kiosk, crowd, boardwalk.
+   Everything is decoration — no pointer events, compositor-only animation. */
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+.scene > * { position: absolute; }
+
+.sky {
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 100%, rgba(242, 106, 27, 0.55), transparent 70%),
+    linear-gradient(180deg, #0e0318 0%, var(--purple-deep) 42%, #6a2396 78%, #b8472a 100%);
+}
+.star {
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: #fff6d6;
+  opacity: 0.75;
+}
+.star:nth-child(3n) { animation: twinkle 6s ease-in-out infinite; }
+.star:nth-child(5n) { animation: twinkle 9s ease-in-out infinite reverse; }
+@keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.95; } }
+
+.lights {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 22%;
+}
+.lights .wire { fill: none; stroke: #1b0a2a; stroke-width: 3; }
+.lights .bulb { fill: var(--bulb); filter: drop-shadow(0 0 6px rgba(255, 217, 138, 0.9)); }
+.lights .bulb:nth-child(4n) { fill: #ffb0b0; }
+.lights .bulb:nth-child(7n) { fill: #b6f0ff; }
+.lights.flash .bulb { animation: bulb-flash 0.9s ease-out; }
+@keyframes bulb-flash {
+  0% { opacity: 1; } 15% { opacity: 0.1; } 30% { opacity: 1; } 45% { opacity: 0.1; } 60% { opacity: 1; }
+}
+
+.kiosk {
+  left: 0;
+  top: 13%;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.kiosk text { font-family: var(--font-display); }
+.hatch-glow { opacity: 0; }
+.hatch-glow.on { animation: hatch-glow 0.9s ease-out; }
+@keyframes hatch-glow { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+
+.crowd {
+  left: 0;
+  bottom: 7%;
+  width: 100%;
+  height: 16%;
+}
+.ground {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 9%;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), transparent 30%),
+    repeating-linear-gradient(90deg, #3b1650 0 110px, #2a0b3d 110px 116px);
+  border-top: 4px solid var(--ink);
+}

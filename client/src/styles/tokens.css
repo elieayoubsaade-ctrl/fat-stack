@@ -1,0 +1,43 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FAT STACK — design tokens (Talal Edits, MOTB night)
+   Purple / orange / red from the June 2026 rebrand, black hand-drawn outlines,
+   comic bursts for anything that shouts. Fonts are self-hosted so the event TV
+   works with no internet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@font-face {
+  font-family: "Bangers";
+  src: url("/fonts/Bangers-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Rubik";
+  src: url("/fonts/Rubik-Variable.woff2") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+:root {
+  --purple: #5b1a8a;
+  --purple-mid: #8a2fb8;
+  --purple-deep: #2a0b3d;
+  --purple-night: #150421;
+  --orange: #f26a1b;
+  --red: #e02b2b;
+  --yellow: #ffcf3a;
+  --gold: #ffb300;
+  --ink: #111111;
+  --cream: #fff4e3;
+  --bulb: #ffd98a;
+  --glass: rgba(42, 11, 61, 0.74);
+
+  --font-display: "Bangers", Impact, "Arial Black", sans-serif;
+  --font-ui: "Rubik", "Trebuchet MS", Arial, sans-serif;
+
+  --outline: 4px;
+  --burst-shadow: 6px 6px 0 var(--ink);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* One sandwich layer on screen. 12 layers + base ≈ a third of the stage. */
+  --layer-px: clamp(18px, 2.6vh, 30px);
+}
