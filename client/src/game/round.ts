@@ -45,6 +45,7 @@ export type GameEvent =
   | { type: "drop" }
   | { type: "lid-spawned" }
   | { type: "lid-incoming" }
+  | { type: "hazard-incoming" }
   | { type: "phase"; label: string }
   | { type: "bank-it" }
   | { type: "tick"; urgent: boolean };
@@ -387,6 +388,11 @@ export function stepRound(round: Round, dt: number) {
     round.lastSpawnAt = round.elapsed;
     spawn(round, round.nextKind, phase.speedScale);
     round.nextKind = chooseKind(round);
+    // Heads-up: the next thing out of the hatch is a sauce cup. Red glow, warning buzz —
+    // one spawn interval of warning, the same courtesy the lid horn gives.
+    if (ITEMS[round.nextKind].group === "hazard") {
+      round.events.push({ type: "hazard-incoming" });
+    }
   }
 
   // Falling, catching, missing

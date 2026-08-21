@@ -180,6 +180,12 @@ function collapse() {
   noise({ duration: 0.35, gain: 0.3, delay: 0.18, cutoff: 400 });
 }
 
+/** The next drop is a sauce cup: two low buzzes, nothing like the lid's rising horn. */
+function hazardIncoming() {
+  tone({ freq: 165, duration: 0.09, type: "square", gain: 0.3 });
+  tone({ freq: 147, duration: 0.12, type: "square", gain: 0.3, delay: 0.11 });
+}
+
 /** A lid has entered the field. */
 function lidIncoming() {
   tone({ freq: 880, duration: 0.09, type: "square", gain: 0.3 });
@@ -272,6 +278,7 @@ export const sfx = {
   bank,
   collapse,
   lidIncoming,
+  hazardIncoming,
   lidHorn,
   bankItWarning,
   phaseSlam,

@@ -53,6 +53,9 @@
 .hatch-glow { opacity: 0; }
 .hatch-glow.on { animation: hatch-glow 0.9s ease-out; }
 @keyframes hatch-glow { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+/* The sauce-cup warning blinks — danger reads as a pulse, not a shine. */
+.hatch-glow.danger.on { animation: hatch-danger 0.7s steps(2, end) 2; }
+@keyframes hatch-danger { 0% { opacity: 0.8; } 50% { opacity: 0.1; } 100% { opacity: 0.8; } }
 
 .marquee {
   left: 50%;

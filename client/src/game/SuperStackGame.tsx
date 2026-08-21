@@ -141,6 +141,7 @@ export default function SuperStackGame() {
   const [shakeId, setShakeId] = useState(0);
   const [scorePulse, setScorePulse] = useState(0);
   const [hatchFlash, setHatchFlash] = useState(0);
+  const [hatchDanger, setHatchDanger] = useState(0);
   const [mood, setMood] = useState<PlayerMood>("idle");
   const [moodKey, setMoodKey] = useState(0);
   const moodTimer = useRef(0);
@@ -296,6 +297,10 @@ export default function SuperStackGame() {
           case "lid-incoming":
             sfx.lidHorn();
             setHatchFlash((n) => n + 1);
+            break;
+          case "hazard-incoming":
+            sfx.hazardIncoming();
+            setHatchDanger((n) => n + 1);
             break;
           case "phase":
             sfx.phaseSlam();
@@ -750,7 +755,7 @@ export default function SuperStackGame() {
 
   return (
     <main className="super-stack-app">
-      <Scene hatchFlash={hatchFlash} bank={scorePulse} />
+      <Scene hatchFlash={hatchFlash} hatchDanger={hatchDanger} bank={scorePulse} />
       <header className="game-topline" aria-label="Fatsandwich game header">
         <div className="logo-sticker">
           <img src={gameAssets.logo} alt="Fat Sandwich" />

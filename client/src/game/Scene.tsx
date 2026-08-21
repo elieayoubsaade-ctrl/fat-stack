@@ -74,9 +74,11 @@ const BURST =
 
 export default function Scene({
   hatchFlash = 0,
+  hatchDanger = 0,
   bank = 0,
 }: {
   hatchFlash?: number;
+  hatchDanger?: number;
   bank?: number;
 }) {
   const hatchLeft = ROUND.hatch.left * 10;
@@ -201,6 +203,15 @@ export default function Scene({
           width={hatchWidth - 16}
           height="112"
           fill="var(--gold)"
+        />
+        <rect
+          key={`danger-${hatchDanger}`}
+          className={`hatch-glow danger ${hatchDanger > 0 ? "on" : ""}`}
+          x={hatchLeft + 8}
+          y="104"
+          width={hatchWidth - 16}
+          height="112"
+          fill="var(--red)"
         />
 
         {/* Service window */}
