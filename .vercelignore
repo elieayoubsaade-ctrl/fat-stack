@@ -1,0 +1,5 @@
+# Source art library — 100 MB of reference material the game never loads.
+brand-reference-library/
+.manus/
+node_modules/
+dist/
