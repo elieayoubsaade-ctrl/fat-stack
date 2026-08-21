@@ -1,5 +1,5 @@
 /**
- * The Super Stack round — pure simulation.
+ * The Fat Stack round — pure simulation.
  *
  * No React and no browser code in this file, on purpose: the round can be played thousands
  * of times in a script to verify the balance before any human touches it
@@ -254,7 +254,7 @@ function handleCatch(round: Round, item: FallingItem) {
     round.combo += 1;
     round.bestCombo = Math.max(round.bestCombo, round.combo);
     round.events.push({ type: "bank", amount, layers: round.tower.length, x: item.x, y: item.y });
-    say(round, "SUPER STACK!", "big");
+    say(round, "FAT STACK!", "big");
     round.pot = 0;
     round.tower = [];
     round.nextLidAt = Number.POSITIVE_INFINITY;

@@ -1,5 +1,5 @@
 /**
- * Fatsandwich Super Stack — event arcade game.
+ * Fatsandwich Fat Stack — event arcade game.
  *
  * This file is the screens, the input, and the animation loop. The rules live in
  * `round.ts`, the tuning numbers in `config.ts`, the sound in `audio.ts` — nothing about
@@ -681,7 +681,7 @@ export default function SuperStackGame() {
           <img src={gameAssets.logo} alt="Fat Sandwich" />
         </div>
         <div className="super-title">
-          <span>SUPER</span>
+          <span>FAT</span>
           <strong>STACK</strong>
           <small>STACK IT. BANK IT. WIN IT.</small>
         </div>
@@ -700,11 +700,8 @@ export default function SuperStackGame() {
 
       {screen === "start" && (
         <section className="screen-overlay start-screen" aria-label="Start screen">
-          <div className="host">
-            <img src={gameAssets.pastramiMami} alt="Pastrami Mami" />
-          </div>
           <div className="start-center">
-            <img className="stack-icon" src={gameAssets.superStack} alt="Super Stack" />
+            <img className="stack-icon" src={gameAssets.superStack} alt="Fat Stack" />
             <h1>
               STACK IT HIGH.
               <br />
@@ -729,9 +726,6 @@ export default function SuperStackGame() {
                 </div>
               )}
             </div>
-          </div>
-          <div className="host">
-            <img src={gameAssets.captainTuna} alt="Captain Tuna" />
           </div>
         </section>
       )}
@@ -832,7 +826,7 @@ export default function SuperStackGame() {
               </div>
             </div>
             <div className="rail-card banks-card">
-              <span>SUPER STACKS</span>
+              <span>FAT STACKS</span>
               <b>{view.banks}</b>
             </div>
             <div key={`tuna-${tunaReact}`} className={`rail-character ${tunaReact > 0 ? "react-flinch" : ""}`}>
@@ -1005,7 +999,6 @@ export default function SuperStackGame() {
 
       {screen === "results" && lastRun && (
         <section className="screen-overlay results-screen" aria-label="Results screen">
-          <img className="results-char" src={playerChar.art} alt={playerChar.name} />
           <div className="result-center">
             <h2>{resultHeadline(lastRun)}</h2>
             <div className="score-receipt">
@@ -1015,7 +1008,7 @@ export default function SuperStackGame() {
               {resultStage !== "counting" && (
                 <div className="receipt-lines">
                   <div>
-                    <span>SUPER STACKS BANKED</span>
+                    <span>FAT STACKS BANKED</span>
                     <b>{lastRun.banks}</b>
                   </div>
                   <div>
@@ -1117,7 +1110,6 @@ export default function SuperStackGame() {
 
       {screen === "board" && (
         <section className="screen-overlay leaderboard-screen" aria-label="High score screen">
-          <img className="board-bird" src={gameAssets.captainTuna} alt="Captain Tuna" />
           <div className="board-center">
             <h2>TODAY’S TOP STACKS</h2>
             <div className="score-list">
@@ -1143,7 +1135,7 @@ export default function SuperStackGame() {
 }
 
 function resultHeadline(run: RunSummary) {
-  if (run.banks >= 4) return "SUPER STACK LEGEND!";
+  if (run.banks >= 4) return "FAT STACK LEGEND!";
   if (run.banks >= 2) return "THAT’S A FAT STACK!";
   if (run.banks === 1) return "FIRST BANK IN!";
   if (run.score >= 15000) return "SOLID STACKING!";
