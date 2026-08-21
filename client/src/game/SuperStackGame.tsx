@@ -218,7 +218,7 @@ export default function SuperStackGame() {
     localStorage.setItem(CHAR_KEY, charId);
   }, [charId]);
 
-  const boardCutoff = board.length >= 10 ? (board[board.length - 1]?.score ?? 0) : 0;
+  const boardCutoff = board.length >= 5 ? (board[board.length - 1]?.score ?? 0) : 0;
   const topScore = board[0]?.score ?? 0;
 
   const pushSlam = useCallback((text: string, tone: Slam["tone"]) => {

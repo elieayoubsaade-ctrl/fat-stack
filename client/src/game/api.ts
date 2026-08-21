@@ -101,7 +101,7 @@ export async function fetchLeaderboard(): Promise<{ entries: BoardEntry[]; live:
   try {
     const rows = await selectView<Array<{ rank: number; name: string; score: number; claimed: boolean }>>(
       "leaderboard_today",
-      "select=rank,name,score,claimed&order=score.desc&limit=10",
+      "select=rank,name,score,claimed&order=score.desc&limit=5",
     );
     const entries = rows.map((r) => ({ rank: r.rank, name: r.name, score: r.score, claimed: r.claimed }));
     try {
