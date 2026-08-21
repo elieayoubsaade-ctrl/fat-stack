@@ -44,6 +44,7 @@ export type GameEvent =
   | { type: "fumble"; x: number; y: number }
   | { type: "drop" }
   | { type: "lid-spawned" }
+  | { type: "lid-incoming" }
   | { type: "phase"; label: string }
   | { type: "bank-it" }
   | { type: "tick"; urgent: boolean };
@@ -95,6 +96,8 @@ export type Round = {
   lastTickSecond: number;
   phaseLabel: string;
   saidBankIt: boolean;
+  /** True once the one-second lid warning has fired for the current lid timer. */
+  lidWarned: boolean;
 
   /** Spawn fairness state. */
   lastWasHazard: boolean;
@@ -131,6 +134,7 @@ function scheduleLid(round: Round) {
   const base = TOWER.lidIntervalMin + round.random() * spread;
   const mercy = Math.max(0, round.tower.length - TOWER.lidMinLayers) * TOWER.lidMercyPerLayer;
   round.nextLidAt = round.elapsed + Math.max(2.5, base - mercy);
+  round.lidWarned = false;
 }
 
 /**
@@ -187,6 +191,7 @@ export function createRound(random: () => number = Math.random): Round {
     lastTickSecond: ROUND.seconds,
     phaseLabel: PHASES[0].label,
     saidBankIt: false,
+    lidWarned: false,
     lastWasHazard: false,
     spawnsSinceProtein: 0,
     nextKind: "turkey",
@@ -352,6 +357,12 @@ export function stepRound(round: Round, dt: number) {
     round.saidBankIt = true;
     round.events.push({ type: "bank-it" });
     say(round, "BANK IT!", "big");
+  }
+
+  // Heads-up: the lid drops in about a second. The hatch glows and the horn sounds.
+  if (!round.lidWarned && round.tower.length >= TOWER.lidMinLayers && round.elapsed >= round.nextLidAt - 1) {
+    round.lidWarned = true;
+    round.events.push({ type: "lid-incoming" });
   }
 
   // Movement — distance per second, so speed never depends on the monitor.

@@ -155,6 +155,7 @@ export default function SuperStackGame() {
   const [tunaReact, setTunaReact] = useState(0);
   const [mamiReact, setMamiReact] = useState(0);
   const [scorePulse, setScorePulse] = useState(0);
+  const [hatchFlash, setHatchFlash] = useState(0);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [charId, setCharId] = useState<string>(() => {
     try {
@@ -274,6 +275,10 @@ export default function SuperStackGame() {
             break;
           case "lid-spawned":
             sfx.lidIncoming();
+            break;
+          case "lid-incoming":
+            sfx.lidHorn();
+            setHatchFlash((n) => n + 1);
             break;
           case "phase":
             sfx.phaseSlam();

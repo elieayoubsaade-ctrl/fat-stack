@@ -186,6 +186,12 @@ function lidIncoming() {
   tone({ freq: 1174, duration: 0.12, type: "square", gain: 0.3, delay: 0.09 });
 }
 
+/** One second before the lid drops: a two-note horn from the truck. */
+function lidHorn() {
+  tone({ freq: 440, duration: 0.18, type: "sawtooth", gain: 0.18 });
+  tone({ freq: 660, duration: 0.2, type: "sawtooth", gain: 0.18, delay: 0.18 });
+}
+
 function bankItWarning() {
   [660, 660, 880].forEach((freq, i) => tone({ freq, duration: 0.1, type: "square", gain: 0.32, delay: i * 0.12 }));
 }
@@ -266,6 +272,7 @@ export const sfx = {
   bank,
   collapse,
   lidIncoming,
+  lidHorn,
   bankItWarning,
   phaseSlam,
   tick,
