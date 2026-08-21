@@ -11,7 +11,7 @@
 const base = import.meta.env.BASE_URL;
 
 export const gameAssets = {
-  logo: `${base}assets/fatsandwich-logo-purple-burst.jpeg`,
+  logo: `${base}assets/logo.png`,
   player: `${base}assets/the-fat-sandwich-player.png`,
   pastramiMami: `${base}assets/pastrami-mami-host.png`,
   captainTuna: `${base}assets/captain-tuna-scorekeeper.png`,

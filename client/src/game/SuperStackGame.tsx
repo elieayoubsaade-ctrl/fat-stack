@@ -10,6 +10,9 @@ import { gameAssets } from "./assets";
 import Scene from "./Scene";
 import Player, { type PlayerMood } from "./Player";
 import Hud from "./Hud";
+import StartScreen from "./screens/StartScreen";
+import SelectScreen from "./screens/SelectScreen";
+import HowToScreen from "./screens/HowToScreen";
 import Ingredient, { artFor } from "./Ingredient";
 import { isMuted, primeAudio, setMuted, setMusicIntensity, sfx, startMusic, stopMusic } from "./audio";
 import { CHARACTERS, characterById } from "./characters";
@@ -720,112 +723,22 @@ export default function SuperStackGame() {
       </header>
 
       {screen === "start" && (
-        <section className="screen-overlay start-screen" aria-label="Start screen">
-          <div className="start-center">
-            <img className="stack-icon" src={gameAssets.superStack} alt="Fat Stack" />
-            <h1>
-              STACK IT HIGH.
-              <br />
-              <em>BANK</em> IT BIG.
-            </h1>
-            <p>Catch the good stuff. Grab the lid to bank your points. Don’t let it topple.</p>
-            <button className="red-button big-button" onClick={() => goTo("select")}>
-              {hasPlayed ? "PLAY AGAIN" : "PRESS TO PLAY"}
-            </button>
-            <div className="start-hint">
-              <b>MOVE</b> joystick · arrows · drag <span>•</span> <b>START</b> red button · space
-            </div>
-            <div className="stat-row">
-              <div className="stat-pill">
-                <span>TODAY’S TOP STACK</span>
-                <b>{fmt(topScore)}</b>
-              </div>
-              {best > 0 && (
-                <div className="stat-pill red">
-                  <span>YOUR BEST</span>
-                  <b>{fmt(best)}</b>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+        <StartScreen hasPlayed={hasPlayed} topScore={topScore} best={best} onStart={() => goTo("select")} />
       )}
 
       {screen === "select" && (
-        <section className="screen-overlay select-screen" aria-label="Choose your character">
-          <h2>CHOOSE YOUR STACKER</h2>
-          <div className="char-grid">
-            {CHARACTERS.map((c) => (
-              <button
-                key={c.id}
-                className={`char-card ${c.id === charId ? "picked" : ""}`}
-                onClick={() => {
-                  sfx.uiPress();
-                  setCharId(c.id);
-                }}
-              >
-                <img src={c.art} alt={c.name} />
-                <b>{c.name}</b>
-                <span>{c.tag}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            className="red-button big-button"
-            onClick={() => (hasPlayed ? startGame(false) : goTo("how-to"))}
-          >
-            STACK AS {playerChar.name.toUpperCase()}
-          </button>
-        </section>
+        <SelectScreen
+          characters={CHARACTERS}
+          selectedId={charId}
+          onSelect={(id) => {
+            sfx.uiPress();
+            setCharId(id);
+          }}
+          onPick={() => (hasPlayed ? startGame(false) : goTo("how-to"))}
+        />
       )}
 
-      {screen === "how-to" && (
-        <section className="screen-overlay tutorial-screen" aria-label="How to play">
-          <h2>HOW TO STACK</h2>
-          <div className="tutorial-grid">
-            <article>
-              <span className="step-num">01</span>
-              <div className="tutorial-items">
-                <Ingredient kind="pastrami" />
-                <Ingredient kind="tomato" />
-                <Ingredient kind="lettuce" />
-              </div>
-              <h3>CATCH</h3>
-              <p>EVERY CATCH FILLS YOUR POT</p>
-            </article>
-            <article>
-              <span className="step-num">02</span>
-              <div className="tutorial-items">
-                <Ingredient kind="lid" />
-              </div>
-              <h3>BANK</h3>
-              <p>THE LID CASHES YOUR POT IN. TALLER = BIGGER BONUS</p>
-            </article>
-            <article>
-              <span className="step-num">03</span>
-              <div className="tutorial-items">
-                <img className="topple-demo" src={gameAssets.ingBase} alt="Tiger crunch base" />
-              </div>
-              <h3>DON’T TOPPLE</h3>
-              <p>{TOWER.collapseAt} LAYERS = CRASH. POT LOST</p>
-            </article>
-            <article>
-              <span className="step-num">04</span>
-              <div className="tutorial-items">
-                <div className="hazard-demo">
-                  <Ingredient kind="sauce" />
-                  <span className="hazard-mark">✕</span>
-                </div>
-              </div>
-              <h3>AVOID</h3>
-              <p>3 SAUCE SPILLS = GAME OVER</p>
-            </article>
-          </div>
-          <button className="red-button big-button" onClick={() => startGame(false)}>
-            PRESS TO START
-          </button>
-        </section>
-      )}
+      {screen === "how-to" && <HowToScreen onStart={() => startGame(false)} />}
 
       {screen === "playing" && (
         <section className="play-screen" aria-label="Live game">
