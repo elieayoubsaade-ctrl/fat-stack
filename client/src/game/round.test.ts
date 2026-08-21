@@ -52,3 +52,15 @@ describe("lid warning", () => {
     expect(seen[0]).toBeLessThan(4.1);
   });
 });
+
+describe("biggest bank", () => {
+  it("remembers the layers of the biggest banked sandwich", () => {
+    const round = createRound(seeded(5));
+    round.tower = ["turkey", "lettuce", "tomato", "bacon"];
+    round.pot = 1000;
+    round.items = [{ id: 1, kind: "lid", x: round.playerX, y: catchY(round), speed: 0, tilt: 0 }];
+    stepRound(round, 1 / 60);
+    expect(round.banks).toBe(1);
+    expect(round.biggestBankLayers).toEqual(["turkey", "lettuce", "tomato", "bacon"]);
+  });
+});

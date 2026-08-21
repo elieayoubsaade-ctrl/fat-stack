@@ -81,6 +81,8 @@ export type Round = {
 
   banks: number;
   biggestBank: number;
+  /** The layers of the biggest banked sandwich — drawn as the hero on the results screen. */
+  biggestBankLayers: ItemKind[];
   caught: number;
   dropped: number;
   spawned: number;
@@ -178,6 +180,7 @@ export function createRound(random: () => number = Math.random): Round {
     fumbles: 0,
     banks: 0,
     biggestBank: 0,
+    biggestBankLayers: [],
     caught: 0,
     dropped: 0,
     spawned: 0,
@@ -254,6 +257,7 @@ function handleCatch(round: Round, item: FallingItem) {
     const amount = bankValue(round.pot, round.tower.length);
     round.score += amount;
     round.banks += 1;
+    if (amount >= round.biggestBank) round.biggestBankLayers = [...round.tower];
     round.biggestBank = Math.max(round.biggestBank, amount);
     round.caught += 1;
     round.combo += 1;
