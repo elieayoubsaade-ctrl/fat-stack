@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { claimPlace, fetchClaimInfo, type ClaimInfo } from "@/game/api";
-import { track } from "@/game/analytics";
+import { identifyPlayer, track } from "@/game/analytics";
 
 type Stage = "loading" | "form" | "saving" | "done" | "already" | "notfound" | "error";
 
@@ -57,6 +57,8 @@ export default function ClaimPage() {
         setDisplayName(result.display_name);
         setStage("done");
         track("contact_submitted", { rank: info?.rank, score: info?.score, marketing_consent: marketing });
+        // Links this phone to a known person in PostHog — by pseudonymous id, never email.
+        identifyPlayer(result.contact_id, { marketing_consent: marketing, best_known_score: info?.score });
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : "Something went wrong";
         setError(

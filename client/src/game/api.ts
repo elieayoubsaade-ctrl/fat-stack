@@ -14,7 +14,7 @@
  *   dead connection costs nobody their round.
  */
 
-import { deviceId } from "./analytics";
+import { deviceId, deviceKind } from "./analytics";
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
@@ -135,6 +135,7 @@ function toPayload(play: PlaySummary) {
     // Anonymous per-browser id — identifies a phone or a cabinet, never a person.
     // Lets us count players, not just rounds.
     p_device_id: deviceId(),
+    p_device_kind: deviceKind(),
   };
 }
 
@@ -225,12 +226,13 @@ export async function claimPlace(
   fullName: string,
   email: string,
   marketingConsent: boolean,
-): Promise<{ display_name: string; score: number }> {
+): Promise<{ display_name: string; score: number; contact_id: string }> {
   return rpc("claim_play", {
     p_token: token,
     p_full_name: fullName,
     p_email: email,
     p_marketing: marketingConsent,
+    p_device_id: deviceId(),
   });
 }
 

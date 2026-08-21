@@ -34,6 +34,48 @@ export function deviceId(): string {
   }
 }
 
+/**
+ * Is this a shared cabinet? Add ?cabinet=front-desk to the URL on an event machine.
+ * On a cabinet every player shares one browser, so device id cannot mean "a player" —
+ * analytics counts rounds there instead of people.
+ */
+export function deviceKind(): "personal" | "cabinet" {
+  try {
+    return new URLSearchParams(window.location.search).has("cabinet") ? "cabinet" : "personal";
+  } catch {
+    return "personal";
+  }
+}
+
+/**
+ * Link this device to a known person once they claim.
+ *
+ * Deliberately sends NO name or email — PostHog gets a pseudonymous contact id and
+ * the fact that a claim happened. The personal details stay in the database, which is
+ * the only place they belong.
+ */
+export function identifyPlayer(contactId: string, properties: Record<string, unknown> = {}) {
+  if (!KEY) return;
+  try {
+    void fetch(`${HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: KEY,
+        event: "$identify",
+        properties: {
+          distinct_id: deviceId(),
+          $set: { claimed: true, contact_id: contactId, ...properties },
+        },
+        timestamp: new Date().toISOString(),
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* analytics never surfaces an error */
+  }
+}
+
 export type GameEventName =
   | "game_opened"
   | "attract_shown"
@@ -42,7 +84,8 @@ export type GameEventName =
   | "round_completed"
   | "made_leaderboard"
   | "claim_opened"
-  | "contact_submitted";
+  | "contact_submitted"
+  | "$identify";
 
 /** Fire and forget — analytics must never delay or break the game. */
 export function track(event: GameEventName, properties: Record<string, unknown> = {}) {

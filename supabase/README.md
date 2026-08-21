@@ -24,6 +24,41 @@ public key: reading `contacts` (401), reading `plays` (401), forging a 999,999,9
 score (rejected), a 1-second round (rejected), claiming with a junk token
 (rejected), and claiming twice (rejected).
 
+## Knowing individual players
+
+Three levels of identity, on purpose:
+
+| Level | Column | What it tells you |
+|---|---|---|
+| Device | `plays.device_id` | Anonymous per-browser id. A phone or a cabinet — never a person |
+| Device kind | `plays.device_kind` | `personal` (one player) or `cabinet` (many players share it) |
+| Person | `contacts` | A real name and email, only when they chose to claim |
+
+**The cabinet caveat.** On a shared event machine every player is the same browser, so
+device id cannot mean "a player" there. Put `?cabinet=front-desk` on the URL of any
+shared machine and its plays are tagged `cabinet` — then count *rounds* on cabinets and
+*devices* on phones. Unique-player queries below already do this.
+
+```sql
+-- How many actual people played today (phones = people, cabinets = rounds)
+select
+  count(distinct device_id) filter (where device_kind = 'personal') as people_on_phones,
+  count(*)                  filter (where device_kind = 'cabinet')  as rounds_on_cabinets
+from plays
+where (created_at at time zone event_tz())::date = (now() at time zone event_tz())::date;
+
+-- Every player with their full history, named where they claimed
+select known_name, known_email, rounds, best_score, days_played, first_played, last_played
+from players
+where device_kind = 'personal'
+order by best_score desc;
+
+-- Repeat play: how many came back for more than one go
+select rounds, count(*) as players
+from players where device_kind = 'personal'
+group by rounds order by rounds;
+```
+
 ## Useful queries
 
 ```sql
