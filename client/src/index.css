@@ -6,15 +6,12 @@
 @import "./styles/screens.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SUPER STACK — Comic Counter Carnival, composed for a 16:9 event TV.
+   FAT STACK — app shell (Talal Edits, MOTB night)
 
-   Principles (from the design plan):
-   • The lane is the star: wide, calm, cool-tinted, so warm food pops against it.
-   • HUD lives in rails OUTSIDE the play field and never covers a falling item.
-   • Three type sizes only: display (Impact), label (heavy small caps), giant (clock).
-   • Decoration belongs in the rails; the field itself stays quiet.
+   Tokens, the scene, the player, the HUD and the menu screens each live in
+   styles/*.css. This file keeps only the shell: body, header chips, the lane,
+   falling items, floats, slams, overlays.
    ═══════════════════════════════════════════════════════════════════════════ */
-
 :root {
   --paper: #fbf1d7;
   --field: #eef3ee;
@@ -72,7 +69,6 @@ img { -webkit-user-drag: none; }
 .leaderboard-link { background: var(--red); color: #fff; }
 
 /* ── Shared bits ────────────────────────────────────────────────────────── */
-.text-link { background: none; border: none; color: var(--purple-deep); font-weight: 900; font-size: 13px; text-decoration: underline; }
 
 
 /* ── Start screen ── */

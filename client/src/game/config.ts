@@ -88,11 +88,11 @@ export const ROUND = {
   /** Items appear at the top of the hatch, not above the screen. */
   spawnY: 28,
   /**
-   * The fall used to be 94 grid units (−10 → 84); out of the hatch it is 56. This scales
+   * The fall used to be 94 grid units (−10 → 84); out of the hatch it is 51. This scales
    * every fall speed so the TIME to reach the tray is unchanged — the balance sheet above
    * still means what it says.
    */
-  fallScale: 56 / 94,
+  fallScale: 51 / 94,
   /** Never allow more than this many items on screen at once. */
   maxItems: 12,
 };
@@ -125,7 +125,7 @@ export const TOWER = {
   /** ...tightened by this many seconds per layer above the minimum (mercy for deep stacks). */
   lidMercyPerLayer: 0.3,
   /** Where the tray sits on the 0–100 grid (y). The catch point starts here... */
-  trayY: 84,
+  trayY: 79,
   /** ...and rises this many grid units per layer. A tall tower catches earlier. */
   layerUnits: 1.9,
   /** Banking pays the pot PLUS layers² × this. Quadratic: one 10-stack beats two 5-stacks. */
