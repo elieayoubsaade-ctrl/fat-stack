@@ -99,3 +99,13 @@ button { font:inherit; }
 
 .receipt-lines .bonus-line { grid-column:1 / -1; color:var(--purple-deep); border-top:1px dotted var(--ink); padding-top:3px; }
 .receipt-lines .bonus-line b { color:var(--red); }
+
+/* Brand-coloured ground, standing in until the deli-counter environment art exists.
+   Replace this rule with a background-image once that artwork is delivered. */
+.super-stack-app {
+  background-color:var(--cream);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(123,94,167,.20), transparent 62%),
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(232,25,26,.12), transparent 70%),
+    repeating-linear-gradient(97deg, rgba(28,23,32,.035) 0 2px, transparent 2px 74px);
+}

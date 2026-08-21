@@ -294,7 +294,7 @@ export default function SuperStackGame() {
   const urgent = seconds <= 10;
 
   return (
-    <main className="super-stack-app" style={{ backgroundImage: `url(${gameAssets.deliCounterWorld})` }}>
+    <main className="super-stack-app">
       <div className="paper-wash" />
       <header className="game-topline" aria-label="Fatsandwich game header">
         <img className="brand-logo" src={gameAssets.logo} alt="Fat Sandwich" />
