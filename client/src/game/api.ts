@@ -23,6 +23,7 @@ const KEY = import.meta.env.VITE_SUPABASE_KEY as string | undefined;
 export const backendConfigured = Boolean(URL && KEY);
 
 const BOARD_CACHE_KEY = "fatstack-board-cache";
+const BOARD_ALLTIME_CACHE_KEY = "fatstack-board-cache-alltime";
 const QUEUE_KEY = "fatstack-pending-plays";
 const REQUEST_TIMEOUT = 6000;
 
@@ -85,9 +86,14 @@ async function selectView<T>(view: string, query: string): Promise<T> {
 
 /* ── Leaderboard ─────────────────────────────────────────────────────────── */
 
-function readBoardCache(): BoardEntry[] | null {
+export type BoardScope = "today" | "alltime";
+
+const cacheKeyFor = (scope: BoardScope) =>
+  scope === "alltime" ? BOARD_ALLTIME_CACHE_KEY : BOARD_CACHE_KEY;
+
+function readBoardCache(scope: BoardScope): BoardEntry[] | null {
   try {
-    const raw = localStorage.getItem(BOARD_CACHE_KEY);
+    const raw = localStorage.getItem(cacheKeyFor(scope));
     return raw ? (JSON.parse(raw) as BoardEntry[]) : null;
   } catch {
     return null;
@@ -98,23 +104,31 @@ function readBoardCache(): BoardEntry[] | null {
  * Today's top ten. Returns the cached copy if the network is unavailable, so the
  * board on the cabinet never goes blank mid-event.
  */
-export async function fetchLeaderboard(): Promise<{ entries: BoardEntry[]; live: boolean }> {
-  if (!backendConfigured) return { entries: readBoardCache() ?? [], live: false };
+export async function fetchLeaderboard(
+  scope: BoardScope = "today",
+): Promise<{ entries: BoardEntry[]; live: boolean }> {
+  if (!backendConfigured) return { entries: readBoardCache(scope) ?? [], live: false };
   try {
     const rows = await selectView<Array<{ rank: number; name: string; score: number; claimed: boolean }>>(
-      "leaderboard_today",
+      scope === "alltime" ? "leaderboard_alltime" : "leaderboard_today",
       "select=rank,name,score,claimed&order=score.desc&limit=5",
     );
     const entries = rows.map((r) => ({ rank: r.rank, name: r.name, score: r.score, claimed: r.claimed }));
     try {
-      localStorage.setItem(BOARD_CACHE_KEY, JSON.stringify(entries));
+      localStorage.setItem(cacheKeyFor(scope), JSON.stringify(entries));
     } catch {
       /* storage full or blocked — the board still works this session */
     }
     return { entries, live: true };
   } catch {
-    return { entries: readBoardCache() ?? [], live: false };
+    return { entries: readBoardCache(scope) ?? [], live: false };
   }
+}
+
+/** Both boards at once, so switching tabs is instant rather than a loading flicker. */
+export async function fetchBothBoards() {
+  const [today, alltime] = await Promise.all([fetchLeaderboard("today"), fetchLeaderboard("alltime")]);
+  return { today, alltime };
 }
 
 /* ── Submitting a round ──────────────────────────────────────────────────── */

@@ -17,11 +17,12 @@ import ResultsScreen, { type ResultStage, type RunSummary } from "./screens/Resu
 import BoardScreen from "./screens/BoardScreen";
 import {
   backendConfigured,
-  fetchLeaderboard,
+  fetchBothBoards,
   flushQueuedPlays,
   setInitials as pushInitials,
   submitPlay,
   type BoardEntry,
+  type BoardScope,
 } from "./api";
 import { track } from "./analytics";
 import Ingredient, { artFor } from "./Ingredient";
@@ -127,6 +128,8 @@ export default function SuperStackGame() {
   const [view, setView] = useState<View>(() => toView(createRound()));
   const [lastRun, setLastRun] = useState<RunSummary | null>(null);
   const [board, setBoard] = useState<BoardEntry[]>([]);
+  const [allTimeBoard, setAllTimeBoard] = useState<BoardEntry[]>([]);
+  const [boardScope, setBoardScope] = useState<BoardScope>("today");
   const [boardLive, setBoardLive] = useState(false);
   const [qualified, setQualified] = useState(false);
   const [claimToken, setClaimToken] = useState<string | null>(null);
@@ -199,9 +202,11 @@ export default function SuperStackGame() {
   }, [resultStage]);
   /** Pull the live board; push anything a dropped connection stranded earlier. */
   const refreshBoard = useCallback(async () => {
-    const { entries, live } = await fetchLeaderboard();
-    setBoard(entries);
-    setBoardLive(live);
+    // Both ranges are fetched together so the TODAY/ALL TIME tabs switch instantly.
+    const { today, alltime } = await fetchBothBoards();
+    setBoard(today.entries);
+    setAllTimeBoard(alltime.entries);
+    setBoardLive(today.live);
   }, []);
 
   useEffect(() => {
@@ -940,8 +945,19 @@ export default function SuperStackGame() {
 
       {screen === "board" && (
         <BoardScreen
-          entries={board}
-          cutoff={boardCutoff}
+          scope={boardScope}
+          onScope={(next) => {
+            sfx.uiPress();
+            setBoardScope(next);
+          }}
+          entries={boardScope === "today" ? board : allTimeBoard}
+          cutoff={
+            boardScope === "today"
+              ? boardCutoff
+              : allTimeBoard.length >= 5
+                ? (allTimeBoard[allTimeBoard.length - 1]?.score ?? 0)
+                : 0
+          }
           offline={backendConfigured && !boardLive}
           onPlay={() => goTo("select")}
         />
